@@ -1,0 +1,37 @@
+Bruno 2.0 Crew Folio License
+Copyright (c) 2026 Dax Patel, Samir Singh, and contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+1. Attribution
+   The above copyright notice, this permission notice, and clear credit to:
+   - Dax Patel, Samir Singh, and the Bruno 2.0 crew (this repository), and
+   - Bruno Simon as the author of the original folio that inspired this work
+     (https://github.com/brunosimon/folio-2025 / https://bruno-simon.com)
+   shall be included in all copies or substantial portions of the Software,
+   and in public deployments that are substantially derived from it.
+
+2. No false authorship
+   You may NOT claim that you are the original author of this Software, or of a
+   substantial derivative presented as your sole original creation, while
+   omitting the required attribution. Building on this work, forking it, or
+   shipping add-ons is allowed and encouraged — misrepresenting authorship is not.
+
+3. The Software is provided "AS IS", without warranty of any kind, express or
+   implied, including but not limited to the warranties of merchantability,
+   fitness for a particular purpose and noninfringement. In no event shall the
+   authors or copyright holders be liable for any claim, damages or other
+   liability, whether in an action of contract, tort or otherwise, arising from,
+   out of or in connection with the Software or the use or other dealings in
+   the Software.
+
+Notes:
+- Bruno Simon retains all rights to his original folio, assets, and branding.
+- This license covers the crew modifications, new systems (including Letter
+  Builder and related gameplay), branding, and packaging in this repository.
+- Third-party assets (fonts, sounds, models) may carry their own licenses;
+  respect those when redistributing.

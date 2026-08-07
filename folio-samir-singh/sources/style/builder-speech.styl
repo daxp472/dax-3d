@@ -1,0 +1,195 @@
+// Clash-of-Clans style: character slides from left, bubble from his head
+.builder-speech
+    position absolute
+    left 16px
+    bottom 28px
+    z-index 40
+    pointer-events none
+    opacity 0
+    transform translateX(-120%)
+    transition transform 0.55s cubic-bezier(0.2, 1.4, 0.4, 1), opacity 0.35s ease
+
+    html.is-mode-touch &
+        left 12px
+        bottom 88px
+        transform scale(0.92) translateX(-120%)
+        transform-origin left bottom
+
+    &.is-visible
+        pointer-events auto
+        opacity 1
+        transform translateX(0)
+        cursor pointer
+
+        html.is-mode-touch &
+            transform scale(0.92) translateX(0)
+
+    &.is-leaving
+        opacity 0
+        transform translateX(-120%)
+        transition transform 0.4s cubic-bezier(0.6, -0.2, 0.7, 0.2), opacity 0.3s ease
+
+        html.is-mode-touch &
+            transform scale(0.92) translateX(-120%)
+
+    &__stage
+        position relative
+        display flex
+        align-items flex-start
+        gap 0
+
+    &__character
+        position relative
+        width 78px
+        height 110px
+        flex-shrink 0
+        filter drop-shadow(0 6px 0 rgba(0, 0, 0, 0.28))
+        z-index 2
+        animation builder-speech-bounce 0.55s cubic-bezier(0.2, 1.4, 0.4, 1)
+
+    &__cap
+        position absolute
+        top 2px
+        left 12px
+        width 54px
+        height 18px
+        background #e23b2f
+        border-radius 6px 6px 2px 2px
+        border 2px solid #1a1a1a
+
+    &__brim
+        position absolute
+        top 16px
+        left 10px
+        width 58px
+        height 8px
+        background #e23b2f
+        border-radius 2px
+        border 2px solid #1a1a1a
+
+    &__head
+        position absolute
+        top 22px
+        left 16px
+        width 46px
+        height 42px
+        background #f2c7a4
+        border-radius 8px
+        border 2px solid #1a1a1a
+
+    &__eye
+        position absolute
+        top 14px
+        width 7px
+        height 9px
+        background #1a1a1a
+        border-radius 2px
+
+        &--l
+            left 10px
+
+        &--r
+            right 10px
+
+    &__mustache
+        position absolute
+        left 10px
+        bottom 8px
+        width 26px
+        height 7px
+        background #6b3e2e
+        border-radius 3px
+        border 1px solid #1a1a1a
+
+    &__body
+        position absolute
+        top 62px
+        left 14px
+        width 50px
+        height 42px
+        background #e23b2f
+        border-radius 6px
+        border 2px solid #1a1a1a
+        overflow hidden
+
+    &__overalls
+        position absolute
+        left 6px
+        right 6px
+        bottom 0
+        height 28px
+        background #2f5bd8
+        border-top 2px solid #1a1a1a
+
+        &:before,
+        &:after
+            content ''
+            position absolute
+            top -14px
+            width 10px
+            height 16px
+            background #2f5bd8
+            border 2px solid #1a1a1a
+
+        &:before
+            left 4px
+
+        &:after
+            right 4px
+
+    &__bubble
+        position relative
+        margin-top 6px
+        margin-left 4px
+        max-width 260px
+        padding 12px 14px 14px
+        background #fff8ef
+        border 3px solid #1a1a1a
+        border-radius 16px
+        box-shadow 0 6px 0 rgba(0, 0, 0, 0.22)
+        z-index 1
+        opacity 0
+        transform translate(-12px, 18px) scale(0.7)
+        transform-origin 0% 80%
+        transition opacity 0.25s ease 0.12s, transform 0.45s cubic-bezier(0.2, 1.5, 0.35, 1) 0.12s
+
+        .is-visible &
+            opacity 1
+            transform translate(0, 0) scale(1)
+
+        .is-leaving &
+            opacity 0
+            transform translate(-8px, 10px) scale(0.85)
+            transition-delay 0s
+
+    &__tail
+        position absolute
+        left -14px
+        top 28px
+        width 18px
+        height 18px
+        background #fff8ef
+        border-left 3px solid #1a1a1a
+        border-bottom 3px solid #1a1a1a
+        transform rotate(45deg)
+        box-shadow none
+
+    &__title
+        font-family 'Amatic SC', cursive
+        font-weight 700
+        font-size 1.55rem
+        line-height 1
+        color #1a1a1a
+        margin-bottom 6px
+
+    &__text
+        font-size 15px
+        line-height 1.25
+        color #2a2430
+        font-weight 600
+
+@keyframes builder-speech-bounce
+    0%
+        transform translateY(24px)
+    100%
+        transform translateY(0)

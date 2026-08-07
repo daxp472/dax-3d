@@ -1,0 +1,28 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+.VSCodeCounter/
+.autosave
+
+# deps / build
+**/node_modules/
+**/dist/
+.vercel/
+
+# env & secrets
+.env
+.env.*
+!**/.env.example
+
+# media / local junk
+*.wav
+!**/static/sounds/music/*.wav
+
+# nested git (each folio is part of this monorepo)
+**/.git/
+
+# large local-only
+*.blend1

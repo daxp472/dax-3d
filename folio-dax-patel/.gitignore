@@ -1,0 +1,14 @@
+.DS_Store
+node_modules
+dist
+.vercel
+.VSCodeCounter
+.env*
+.autosave
+.wav
+!static/sounds/music/*.wav
+# Local resume copy (served from static/resume/)
+/Dax Patel.pdf
+*.pdf
+!static/resume/*.pdf
+
