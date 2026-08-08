@@ -1,0 +1,19 @@
+{
+  "name": "bruno-2-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "WebSocket backend for Bruno 2.0 crew folios (whispers guestbook + shared counters)",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "msgpack-lite": "^0.1.26",
+    "uuid": "^11.1.0",
+    "ws": "^8.18.3"
+  }
+}

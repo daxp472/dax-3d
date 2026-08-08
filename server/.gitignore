@@ -1,0 +1,3 @@
+# runtime data (persisted whispers / counters)
+data/
+!data/.gitkeep
