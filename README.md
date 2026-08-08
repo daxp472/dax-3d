@@ -45,5 +45,15 @@ Inspired by [Bruno Simon — folio-2025](https://github.com/brunosimon/folio-202
 ## Dev notes
 
 - Each folio is a **separate Vite app** with its own `package.json`.
-- Copy `.env` from `.env.example` inside the folio folder if whispers / server vars are required.
+- **Whispers / Guest Wall backend** lives in [`server/`](./server) — run it before testing multiplayer notes:
+
+```bash
+cd server && npm install && npm run dev
+# then in folio-dax-patel/.env
+# VITE_SERVER_URL=ws://localhost:8787
+cd folio-dax-patel && npm run dev
+```
+
+- Copy `.env` from `.env.example` inside the folio folder if needed.
 - Prefer `npm install --force` if peer dependency noise appears (Three / WebGPU toolchain).
+- Deploy `server/` to Railway/Render/Fly and set `VITE_SERVER_URL=wss://your-host` for production.
