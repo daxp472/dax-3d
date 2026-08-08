@@ -99,14 +99,16 @@ export class Trees
 
     setPhysical()
     {
+        this.physicals = []
+
         for(const treeReference of this.references)
         {
-            this.game.objects.add(
+            const object = this.game.objects.add(
                 null,
                 {
                     type: 'fixed',
-                    position: treeReference.position.add(new THREE.Vector3(0, 2.5, 0)),
-                    rotation: treeReference.quaternion,
+                    position: treeReference.position.clone().add(new THREE.Vector3(0, 2.5, 0)),
+                    rotation: treeReference.quaternion.clone(),
                     friction: 0.7,
                     sleeping: true,
                     colliders: [ { shape: 'cylinder', parameters: [ 2.5, 0.15 ], category: 'object' } ],
@@ -116,6 +118,59 @@ export class Trees
                     }
                 }
             )
+            this.physicals.push(object)
         }
+    }
+
+    /**
+     * Hide trees near a world point (clears space for Guest Wall, etc.).
+     */
+    hideNear(center, radius = 4)
+    {
+        const dummy = new THREE.Object3D()
+        const leavesPerTree = this.modelParts.leaves.length || 1
+        let hidden = 0
+
+        this.references.forEach((treeReference, i) =>
+        {
+            const pos = treeReference.position
+            const dx = pos.x - center.x
+            const dz = pos.z - center.z
+            if((dx * dx + dz * dz) > radius * radius)
+                return
+
+            // Collapse trunk instance
+            dummy.position.copy(pos)
+            dummy.quaternion.copy(treeReference.quaternion)
+            dummy.scale.set(0, 0, 0)
+            dummy.updateMatrix()
+            this.bodies.setMatrixAt(i, dummy.matrix)
+            this.bodies.instanceMatrix.needsUpdate = true
+
+            // Collapse foliage instances for this tree
+            if(this.leaves?.mesh)
+            {
+                for(let l = 0; l < leavesPerTree; l++)
+                {
+                    const leafIndex = i * leavesPerTree + l
+                    if(leafIndex >= this.leaves.mesh.count)
+                        break
+                    dummy.position.set(0, -999, 0)
+                    dummy.scale.set(0, 0, 0)
+                    dummy.updateMatrix()
+                    this.leaves.mesh.setMatrixAt(leafIndex, dummy.matrix)
+                }
+                this.leaves.mesh.instanceMatrix.needsUpdate = true
+            }
+
+            // Disable collider
+            const physical = this.physicals?.[i]
+            if(physical?.physical?.body)
+                physical.physical.body.setEnabled(false)
+
+            hidden++
+        })
+
+        return hidden
     }
 }

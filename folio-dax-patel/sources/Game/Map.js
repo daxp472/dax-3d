@@ -50,6 +50,7 @@ export class Map
             { name: 'Cookie', respawnName: 'cookie', offset: { x: -0.02, y: -0.01 } },
             { name: 'Lab', respawnName: 'lab', offset: { x: -0.03, y: 0 } },
             { name: 'Landing', respawnName: 'landing', offset: { x: 0.02, y: 0 } },
+            { name: 'Guest<br />Notes', respawnName: 'landing', offset: { x: 0.06, y: 0.03 } },
             { name: 'Projects', respawnName: 'projects', offset: { x: 0, y: -0.02 } },
             { name: 'Social', respawnName: 'social', offset: { x: -0.01, y: -0.04 } },
             { name: 'Time Machine', respawnName: 'timeMachine', offset: { x: 0, y: 0 } },
@@ -79,6 +80,20 @@ export class Map
 
             element.addEventListener('click', () =>
             {
+                // Guest Notes → land near spawn then cinematic-focus the wall
+                if(item.name.includes('Guest'))
+                {
+                    this.game.player.respawn(item.respawnName, () =>
+                    {
+                        this.game.view.focusPoint.isTracking = true
+                        const board = this.game.guestbookBoard
+                        if(board)
+                            this.game.ticker.wait(20, () => board.focusCamera())
+                    })
+                    this.game.modals.close()
+                    return
+                }
+
                 this.game.player.respawn(item.respawnName, () =>
                 {
                     this.game.view.focusPoint.isTracking = true

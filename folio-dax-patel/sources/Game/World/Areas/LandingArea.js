@@ -7,6 +7,7 @@ import gsap from 'gsap'
 import { MeshDefaultMaterial } from '../../Materials/MeshDefaultMaterial.js'
 import { NameLetters } from '../NameLetters.js'
 import { LetterBuilder } from '../LetterBuilder.js'
+import { GuestbookBoard } from '../GuestbookBoard.js'
 
 export class LandingArea extends Area
 {
@@ -17,6 +18,7 @@ export class LandingArea extends Area
         this.localTime = uniform(0)
 
         this.setLetters()
+        this.setGuestbook()
         this.setKiosk()
         this.setControls()
         this.setBonfire()
@@ -30,6 +32,91 @@ export class LandingArea extends Area
         this.nameLetters.onReady = () =>
         {
             this.letterBuilder = new LetterBuilder(this.nameLetters)
+        }
+    }
+
+    setGuestbook()
+    {
+        // Image 2: garden to the LEFT of Res(e)t bench — clear it and plant the Guest Wall there
+        const resetRef = this.references.items.get('bonfireInteractivePoint')?.[0]
+        const letters = this.references.items.get('letters')
+        const resetPos = new THREE.Vector3()
+
+        if(resetRef)
+            resetPos.copy(resetRef.position)
+        else
+            return
+
+        const lettersMid = new THREE.Vector3()
+        if(letters?.length)
+        {
+            for(const mesh of letters)
+            {
+                const p = new THREE.Vector3()
+                mesh.getWorldPosition(p)
+                lettersMid.add(p)
+            }
+            lettersMid.multiplyScalar(1 / letters.length)
+        }
+        else
+        {
+            lettersMid.copy(resetPos)
+            lettersMid.z -= 4
+        }
+
+        // Facing Res(e)t → name (road / visitor flow)
+        const toName = lettersMid.clone().sub(resetPos)
+        toName.y = 0
+        if(toName.lengthSq() < 0.01)
+            toName.set(0, 0, -1)
+        else
+            toName.normalize()
+
+        // Left of Res(e)t when looking toward the name = garden patch
+        // (perpendicular; flipped from earlier wrong-side placement)
+        const toGarden = new THREE.Vector3(toName.z, 0, -toName.x).normalize()
+
+        const anchor = resetPos.clone()
+        anchor.addScaledVector(toGarden, 4.8)
+        anchor.addScaledVector(toName, -0.8)
+        anchor.y = 0
+
+        // Cork face (+Z) toward the road / Res(e)t so visitors can read
+        const facing = Math.atan2(resetPos.x - anchor.x, resetPos.z - anchor.z)
+
+        this.clearGuestbookGarden(anchor, 4.4)
+        this.guestbookBoard = new GuestbookBoard(anchor, facing)
+    }
+
+    clearGuestbookGarden(center, radius)
+    {
+        const world = this.game.world
+        if(!world)
+            return
+
+        world.birchTrees?.hideNear?.(center, radius)
+        world.oakTrees?.hideNear?.(center, radius)
+        world.cherryTrees?.hideNear?.(center, radius)
+
+        // Hide nearby loose scenery / crates (blue blocks etc.) — keep benches & name letters
+        for(const object of this.game.objects.list)
+        {
+            if(!object.visual?.object3D || !object.physical)
+                continue
+            if(object.physical.type === 'fixed')
+                continue
+
+            const name = object.visual.object3D.name || ''
+            if(name.startsWith('nameLetter') || name.includes('bench') || name.includes('Bench'))
+                continue
+
+            const pos = object.visual.object3D.position
+            const dx = pos.x - center.x
+            const dz = pos.z - center.z
+            if((dx * dx + dz * dz) > radius * radius)
+                continue
+
+            this.game.objects.disable(object)
         }
     }
 

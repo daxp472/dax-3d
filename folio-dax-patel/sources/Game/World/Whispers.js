@@ -14,6 +14,7 @@ export class Whispers
         this.game = Game.getInstance()
 
         this.count = parseInt(import.meta.env.VITE_WHISPERS_COUNT, 10) || 30
+        this.boardSnap = null
 
         this.setSounds()
         this.setFlames()
@@ -239,13 +240,33 @@ export class Whispers
         // Server message event
         this.game.server.events.on('message', (data) =>
         {
-            // Init and insert
-            if(data.type === 'init' || data.type === 'whispersInsert')
+            // Full sync from server
+            if(data.type === 'init')
+            {
+                // Clear occupied slots so reconnect doesn't leave ghosts
+                for(const item of this.data.items)
+                {
+                    if(!item.available)
+                    {
+                        item.available = true
+                        item.id = null
+                        this.revealArray[item.index] = 0
+                    }
+                }
+                this.revealBufferNeedsUpdate = true
+                this.bubble.closest = null
+
+                if(Array.isArray(data.whispers))
+                {
+                    for(const whisper of data.whispers)
+                        this.data.insert(whisper)
+                }
+            }
+            else if(data.type === 'whispersInsert')
             {
                 for(const whisper of data.whispers)
                     this.data.insert(whisper)
             }
-
             // Delete
             else if(data.type === 'whispersDelete')
             {
@@ -302,36 +323,60 @@ export class Whispers
         const submit = () =>
         {
             const sanatized = sanatize(this.menu.input.value, true, true, true)
-            
-            if(sanatized.length && this.game.server.connected)
+            if(!sanatized.length)
+                return
+
+            let x = this.game.player.position.x
+            let y = this.game.player.position.y
+            let z = this.game.player.position.z
+
+            if(this.boardSnap?.getSnapPosition)
             {
-                // Insert
+                const snap = this.boardSnap.getSnapPosition()
+                x = snap.x
+                y = snap.y
+                z = snap.z
+            }
+
+            const finish = () =>
+            {
+                this.game.menu.close()
+                this.game.achievements.setProgress('whisper', 1)
+                gsap.delayedCall(0.3, () => this.sounds.ignite.play())
+                this.menu.input.value = ''
+                this.boardSnap = null
+                this.game.guestbookBoard?.refreshLiveCards()
+                updateGroup()
+            }
+
+            if(this.game.server.connected)
+            {
                 this.game.server.send({
                     type: 'whispersInsert',
                     message: sanatized,
                     countryCode: this.menu.inputFlag.country ? this.menu.inputFlag.country.code : '',
-                    x: this.game.player.position.x,
-                    y: this.game.player.position.y,
-                    z: this.game.player.position.z
+                    x, y, z,
                 })
-
-                // Close menu
-                this.game.menu.close()
-
-                // Achievement
-                this.game.achievements.setProgress('whisper', 1)
-
-                // Sound
-                gsap.delayedCall(0.3, () =>
-                {
-                    this.sounds.ignite.play()
-                })
+                finish()
+            }
+            else if(this.game.guestbookBoard)
+            {
+                this.game.guestbookBoard.saveLocalNote(sanatized)
+                finish()
+                this.game.notifications.show(
+                    `<div class="top"><div class="title">Saved on your wall</div></div><div class="bottom"><div class="description">Server offline — note saved on this device. Set <strong>VITE_SERVER_URL</strong> so every visitor can read it.</div></div>`,
+                    'letter-builder-rest',
+                    4,
+                    null,
+                    'guestbook-local'
+                )
             }
         }
 
         const updateGroup = () =>
         {
-            if(this.menu.input.value.length && this.game.server.connected)
+            const canSubmit = this.menu.input.value.length && (this.game.server.connected || this.game.guestbookBoard)
+            if(canSubmit)
                 this.menu.inputGroup.classList.add('is-valide')
             else
                 this.menu.inputGroup.classList.remove('is-valide')

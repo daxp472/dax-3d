@@ -77,6 +77,21 @@ export class BuilderSpeech
             return false
         }
 
+        return this.showNow(title, text, duration, id)
+    }
+
+    /** Interrupt current bubble and show this note immediately (guestbook frames). */
+    sayForce(title, text, duration = 5, id = null)
+    {
+        this.queue = []
+        this.element.classList.remove('is-leaving', 'is-visible')
+        this.state = BuilderSpeech.STATE_HIDDEN
+        this.currentId = null
+        return this.showNow(title, text, duration, id)
+    }
+
+    showNow(title, text, duration, id)
+    {
         this.currentId = id
         this.titleEl.textContent = title
         this.textEl.textContent = text
@@ -85,7 +100,6 @@ export class BuilderSpeech
         this.state = BuilderSpeech.STATE_VISIBLE
 
         this.element.classList.remove('is-leaving')
-        // Force reflow so enter animation always plays
         void this.element.offsetWidth
         this.element.classList.add('is-visible')
         return true
