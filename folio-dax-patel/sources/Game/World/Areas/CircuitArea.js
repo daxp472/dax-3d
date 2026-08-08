@@ -10,6 +10,7 @@ import { alea } from 'seedrandom'
 import { InputFlag } from '../../InputFlag.js'
 import { Area } from './Area.js'
 import { timeToRaceString, timeToReadableString } from '../../utilities/time.js'
+import { RaceOpponents } from './RaceOpponents.js'
 
 export class CircuitArea extends Area
 {
@@ -55,9 +56,34 @@ export class CircuitArea extends Area
         this.setPodium()
         this.setData()
         this.setAchievement()
+        this.setRaceOpponents()
 
         this.game.materials.getFromName('circuitBrand').map.minFilter = THREE.LinearFilter
         this.game.materials.getFromName('circuitBrand').map.magFilter = THREE.LinearFilter
+    }
+
+    setRaceOpponents()
+    {
+        const ensureRivals = () =>
+        {
+            if(!this.game.world?.vehicleChassisTemplate && !this.game.world?.visualVehicle)
+                return false
+
+            if(!this.raceOpponents)
+                this.raceOpponents = new RaceOpponents(this)
+            else
+                this.raceOpponents.spawnOnce()
+
+            return this.raceOpponents.rivals.length > 0
+        }
+
+        if(!ensureRivals())
+        {
+            this.game.ticker.wait(30, ensureRivals)
+            this.game.ticker.wait(90, ensureRivals)
+            this.game.ticker.wait(180, ensureRivals)
+            this.game.ticker.wait(360, ensureRivals)
+        }
     }
 
     setSounds()
@@ -542,17 +568,73 @@ export class CircuitArea extends Area
             obstacle.object = baseObstacle.userData.object
             obstacle.osciliationOffset = - i * 1
             obstacle.basePosition = obstacle.object.visual.object3D.position.clone()
+            obstacle.gateAxis = this.nearestCheckpointGateAxis(obstacle.basePosition)
 
             this.obstacles.items.push(obstacle)
 
             i++
         }
     }
+
+    /** Gate bar axis at the checkpoint closest to a world position (XZ). */
+    nearestCheckpointGateAxis(position)
+    {
+        let best = null
+        let bestD2 = Infinity
+
+        for(const cp of this.checkpoints.items)
+        {
+            const dx = cp.position.x - position.x
+            const dz = cp.position.z - position.z
+            const d2 = dx * dx + dz * dz
+            if(d2 < bestD2)
+            {
+                bestD2 = d2
+                best = cp
+            }
+        }
+
+        if(!best)
+            return { x: 0, z: 1 }
+
+        const gx = best.b.x - best.a.x
+        const gz = best.b.y - best.a.y
+        const len = Math.hypot(gx, gz) || 1
+        return { x: gx / len, z: gz / len }
+    }
+
+    /** Same oscillating crate path the player hits — used by NPC too. */
+    getObstaclePosition(obstacle, elapsedTime = this.timer?.elapsedTime ?? this.game.ticker.elapsed)
+    {
+        const axis = obstacle.gateAxis
+        const osc = Math.sin(elapsedTime * 1.25 + obstacle.osciliationOffset) * 5
+        return obstacle.basePosition.clone().add(
+            new THREE.Vector3(axis.x * osc, 0, axis.z * osc)
+        )
+    }
  
     setRoad()
     {
-        this.roadBody = this.references.items.get('road')[0].userData.object.physical.body
+        const roadRef = this.references.items.get('road')[0]
+        this.roadBody = roadRef.userData.object.physical.body
         this.roadBody.setEnabled(false)
+
+        // Match world road — dark asphalt (#383039), not washed-out GLB palette
+        const roadColor = uniform(color('#383039'))
+        const roadMaterial = new MeshDefaultMaterial({
+            colorNode: roadColor,
+            hasLightBounce: false,
+            hasWater: false,
+        })
+
+        roadRef.traverse((child) =>
+        {
+            if(child.isMesh)
+            {
+                child.material = roadMaterial
+                child.receiveShadow = true
+            }
+        })
     }
     
     setRails()
@@ -1444,6 +1526,11 @@ export class CircuitArea extends Area
             // Podium => Hide
             this.podium.hide()
 
+            // Rivals — always spawn + show on grid
+            if(!this.raceOpponents)
+                this.raceOpponents = new RaceOpponents(this)
+            this.raceOpponents.resetToGrid()
+
             // Overlay > Hide
             this.game.overlay.hide(() =>
             {
@@ -1457,6 +1544,7 @@ export class CircuitArea extends Area
                     this.game.player.state = Player.STATE_DEFAULT
 
                     this.timer.start()
+                    this.raceOpponents?.start()
                 })
 
             })
@@ -1520,6 +1608,18 @@ export class CircuitArea extends Area
         this.timer.end()
         if(forced)
             this.timer.hide()
+
+        // Race opponents → place
+        let place = 1
+        if(this.raceOpponents)
+        {
+            if(!forced)
+                place = this.raceOpponents.onPlayerFinished()
+            else
+                this.raceOpponents.stop()
+            this.raceOpponents.hide()
+        }
+        this.lastPlace = place
 
         // Checkpoints
         this.checkpoints.target = null
@@ -1602,7 +1702,22 @@ export class CircuitArea extends Area
                     })
                 }
 
-                // Circuit en modal (if server connected)
+                // Result toast
+                if(!forced && this.raceOpponents)
+                {
+                    const label = this.raceOpponents.placeLabel(place)
+                    const html = /* html */`
+                        <div class="top">
+                            <div class="title">${place === 1 ? 'You won!' : `Finished ${label}`}</div>
+                        </div>
+                        <div class="bottom">
+                            <div class="description">${this.raceOpponents.resultMessage(place)}</div>
+                        </div>
+                    `
+                    this.game.notifications.show(html, 'circuit-place', 5, null, 'circuit-place')
+                }
+
+                // Circuit end modal (if server connected)
                 if(this.game.server.connected && !forced)
                 {
                     gsap.delayedCall(1, () =>
@@ -1612,7 +1727,23 @@ export class CircuitArea extends Area
                             this.endModal.instance.element.classList.add('is-top-10')
                         else
                             this.endModal.instance.element.classList.remove('is-top-10')
+
+                        const placeEl = this.endModal.instance.element.querySelector('.js-place')
+                        if(placeEl && this.raceOpponents)
+                            placeEl.textContent = this.raceOpponents.placeLabel(place)
                         
+                        this.game.modals.open('circuit-end')
+                    })
+                }
+                else if(!forced)
+                {
+                    // Offline: still show end modal with place when possible
+                    gsap.delayedCall(1, () =>
+                    {
+                        this.endModal.instance.element.classList.remove('is-top-10')
+                        const placeEl = this.endModal.instance.element.querySelector('.js-place')
+                        if(placeEl && this.raceOpponents)
+                            placeEl.textContent = this.raceOpponents.placeLabel(place)
                         this.game.modals.open('circuit-end')
                     })
                 }
@@ -1648,13 +1779,10 @@ export class CircuitArea extends Area
                     checkpoint.reach()
             }
 
-            // Obstacles
+            // Obstacles — gate-axis oscillation (same path NPC predicts)
             for(const obstacle of this.obstacles.items)
             {
-                const newPosition = obstacle.basePosition.clone()
-                const osciliation = Math.sin(this.timer.elapsedTime * 1.25 + obstacle.osciliationOffset) * 5
-                newPosition.z += osciliation
-                
+                const newPosition = this.getObstaclePosition(obstacle)
                 obstacle.object.physical.body.setNextKinematicTranslation(newPosition)
                 obstacle.object.needsUpdate = true
             }
@@ -1672,6 +1800,10 @@ export class CircuitArea extends Area
             {
                 this.bounds.isOut = false
             }
+
+            // NPC racers
+            if(this.raceOpponents)
+                this.raceOpponents.update(this.game.ticker.delta)
         }
 
         // Banners
@@ -1684,6 +1816,10 @@ export class CircuitArea extends Area
 
             i++
         }
+
+        // Live place vs rival during race
+        if(this.raceOpponents?.rivals.length)
+            this.raceOpponents.updatePlaces()
 
         // Timer
         this.timer.update()

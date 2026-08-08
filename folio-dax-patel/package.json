@@ -9,6 +9,8 @@
     "preview": "vite preview",
     "compress": "node scripts/compress.js static/",
     "validate:npcs": "node scripts/validate-npcs.js",
+    "test:race-npc": "node scripts/test-race-npc-spawn.js",
+    "extract:circuit-track": "node scripts/extract-circuit-track.js",
     "download:npcs": "node scripts/download-npc-assets.js"
   },
   "author": "",

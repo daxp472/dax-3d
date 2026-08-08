@@ -1,0 +1,84 @@
+.track-recorder
+    position fixed
+    top 72px
+    left 16px
+    z-index 80
+    pointer-events none
+    opacity 0
+    transform translateY(-6px)
+    transition opacity 0.15s ease, transform 0.15s ease
+    font-family 'Nunito', sans-serif
+
+    &.is-open
+        pointer-events auto
+        opacity 1
+        transform none
+
+    .panel
+        width 280px
+        padding 12px 14px
+        border-radius 10px
+        background rgba(12, 14, 18, 0.88)
+        color #f2f4f7
+        box-shadow 0 10px 30px rgba(0, 0, 0, 0.35)
+        border 1px solid rgba(255, 255, 255, 0.08)
+
+    .title
+        font-weight 900
+        font-size 14px
+        letter-spacing 0.02em
+        margin-bottom 6px
+
+    .status
+        font-size 13px
+        font-weight 700
+        color #9dffc4
+        margin-bottom 6px
+
+    &.is-recording .status
+        color #ff6b8a
+
+    .hint
+        font-size 11px
+        line-height 1.35
+        opacity 0.7
+        margin-bottom 10px
+
+    .row
+        display flex
+        gap 6px
+        margin-bottom 6px
+
+        button
+            flex 1
+            border 0
+            border-radius 7px
+            padding 8px 6px
+            font 700 11px 'Nunito', sans-serif
+            cursor pointer
+            color #101216
+            background #d8dee8
+
+            &:hover
+                filter brightness(1.08)
+
+    .js-rec
+        background #ff5d7a !important
+        color #fff !important
+
+    .js-stop
+        background #ffd166 !important
+
+    .js-copy
+        background #3ecfff !important
+        color #04202a !important
+
+    .preview
+        margin 8px 0 0
+        max-height 110px
+        overflow auto
+        font 11px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
+        color #b8c0cc
+        background rgba(255, 255, 255, 0.04)
+        border-radius 6px
+        padding 8px

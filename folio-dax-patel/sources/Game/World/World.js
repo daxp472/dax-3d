@@ -53,6 +53,9 @@ export class World
         }
         else if(step === 1)
         {
+            // Keep a chassis template BEFORE VisualVehicle reparents chassis out of the GLTF scene
+            // (Race NPCs must clone from this / visualVehicle — not from resources.vehicle.scene)
+            this.stashVehicleChassisTemplate()
             this.visualVehicle = new VisualVehicle(this.game.resources.vehicle.scene)
             this.floor = new Floor()
             this.waterSurface = new WaterSurface()
@@ -83,6 +86,31 @@ export class World
         {
             this.whispers = new Whispers()
         }
+    }
+
+    stashVehicleChassisTemplate()
+    {
+        this.vehicleChassisTemplate = null
+        this.vehicleWheelTemplate = null
+        const scene = this.game.resources?.vehicle?.scene
+        if(!scene)
+            return
+
+        let chassis = null
+        let wheelContainer = null
+        scene.traverse((child) =>
+        {
+            if(!chassis && /^chassis/i.test(child.name))
+                chassis = child
+            if(!wheelContainer && /^wheelContainer/i.test(child.name))
+                wheelContainer = child
+        })
+
+        if(chassis)
+            this.vehicleChassisTemplate = chassis.clone(true)
+
+        if(wheelContainer)
+            this.vehicleWheelTemplate = wheelContainer.clone(true)
     }
 
     setPhysicalFloor()

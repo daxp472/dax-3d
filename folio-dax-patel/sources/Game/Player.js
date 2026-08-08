@@ -636,17 +636,18 @@ export class Player
         if(!this.timePlayed.achieved && this.timePlayed.session > this.game.dayCycles.duration)
         {
             this.timePlayed.achieved = true
-            this.game.achievements.setProgress('fullDay', 1)
+            this.game.achievements?.setProgress('fullDay', 1)
         }
 
         // Sea achievement
         const distanceToCenter = this.position2.length()
         if(distanceToCenter > 120)
-            this.game.achievements.setProgress('sea', 1)
+            this.game.achievements?.setProgress('sea', 1)
 
         // Go high achievements
         const elevation = Math.floor(this.position.y)
-        if(this.game.achievements.groups.get('goHigh') && elevation > this.game.achievements.groups.get('goHigh').progress)
+        const goHigh = this.game.achievements?.groups?.get('goHigh')
+        if(goHigh && elevation > goHigh.progress)
             this.game.achievements.setProgress('goHigh', elevation)
 
         // // Speed achievement
@@ -667,11 +668,9 @@ export class Player
         
         // Achievement
         const distanceDrivenKm = Math.floor(this.distanceDriven.value / 1000)
+        const distanceDriven = this.game.achievements?.groups?.get('distanceDriven')
 
-        if(this.game.achievements.groups.get('distanceDriven') && distanceDrivenKm > this.game.achievements.groups.get('distanceDriven').progress)
-        {
+        if(distanceDriven && distanceDrivenKm > distanceDriven.progress)
             this.game.achievements.setProgress('distanceDriven', distanceDrivenKm)
-
-        }
     }
 }

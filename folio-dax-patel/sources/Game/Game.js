@@ -49,6 +49,7 @@ import { Options } from './Options.js'
 import gsap from 'gsap'
 import { Map } from './Map.js'
 import { NPCs } from './World/NPCs/NPCs.js'
+import { TrackPathRecorder } from './TrackPathRecorder.js'
 
 export class Game
 {
@@ -198,6 +199,7 @@ export class Game
         this.title = new Title()
         // this.monitoring = new Monitoring()
         this.world.step(1)
+        this.trackPathRecorder = new TrackPathRecorder()
         this.npcs = new NPCs() // spawns after intro — see Reveal.js step 2
         this.overlay = new Overlay()
 
