@@ -4,10 +4,13 @@ import { InteractivePoints } from '../../InteractivePoints.js'
 import { vibeMat } from './VoxelPatron.js'
 
 /**
- * Beach club ON the actual southern shore (wet sand ~z 49–52), not inland by pins.
+ * Beach club at player-recorded shore point (−27.4, 74.3).
+ * Local offsets cluster around ORIGIN (world XZ).
  */
 export class BowlingBeach
 {
+    static ORIGIN = { x: -27.398, z: 74.268 }
+
     constructor()
     {
         this.game = Game.getInstance()
@@ -16,23 +19,26 @@ export class BowlingBeach
         this.game.scene.add(this.group)
 
         this.floaters = []
+        const O = BowlingBeach.ORIGIN
 
-        // Shore band: x 3–10, z 49–52 (sea side)
-        this.buildUmbrella({ x: 4.0, z: 50.6, yaw: 0.35, canopy: '#ff6b35', pole: '#f4f0e6' })
-        this.buildUmbrella({ x: 8.2, z: 49.8, yaw: -0.55, canopy: '#7b5cff', pole: '#f4f0e6' })
-        this.buildLounger({ x: 5.0, z: 51.2, yaw: 0.4 })
-        this.buildLounger({ x: 7.4, z: 50.4, yaw: -0.5 })
-        this.buildChaiCooler({ x: 6.2, z: 50.9 })
-        this.buildTowel({ x: 3.2, z: 51.6, yaw: 0.25 })
-        this.buildSurfboard({ x: 9.6, z: 50.2, yaw: 1.05 })
-        this.buildSandcastle({ x: 5.5, z: 49.4 })
-        this.buildBeachBall({ x: 6.8, z: 51.8 })
-        this.buildFlipFlops({ x: 4.4, z: 51.5 })
-        this.buildPalmStub({ x: 10.8, z: 49.6 })
-        this.buildPalmStub({ x: 2.0, z: 51.0 })
-        this.buildDriftWood({ x: 7.0, z: 48.9 })
-        this.setSign()
-        this.setInteract()
+        this.buildSandPad(O.x, O.z)
+        // Cluster around recorded drive point
+        this.buildUmbrella({ x: O.x - 2.4, z: O.z + 1.1, yaw: 0.35, canopy: '#ff6b35', pole: '#f4f0e6' })
+        this.buildUmbrella({ x: O.x + 2.1, z: O.z + 0.4, yaw: -0.55, canopy: '#7b5cff', pole: '#f4f0e6' })
+        this.buildLounger({ x: O.x - 1.2, z: O.z + 1.8, yaw: 0.4 })
+        this.buildLounger({ x: O.x + 1.0, z: O.z + 1.5, yaw: -0.5 })
+        this.buildChaiCooler({ x: O.x, z: O.z + 0.9 })
+        this.buildTowel({ x: O.x - 3.2, z: O.z + 2.0, yaw: 0.25 })
+        this.buildSurfboard({ x: O.x + 3.4, z: O.z + 0.6, yaw: 1.05 })
+        this.buildSandcastle({ x: O.x - 0.4, z: O.z - 1.4 })
+        this.buildBeachBall({ x: O.x + 0.8, z: O.z + 2.4 })
+        this.buildFlipFlops({ x: O.x - 1.8, z: O.z + 2.2 })
+        this.buildPalmStub({ x: O.x + 4.6, z: O.z - 0.2 })
+        this.buildPalmStub({ x: O.x - 4.2, z: O.z + 1.4 })
+        this.buildDriftWood({ x: O.x + 1.6, z: O.z - 2.0 })
+        this.setSign(O.x + 3.0, O.z + 1.6)
+        this.setInteract(O.x, O.z + 0.9)
+        this.clearNearbyFoliage(O.x, O.z, 10)
 
         this.group.traverse((child) =>
         {
@@ -43,6 +49,68 @@ export class BowlingBeach
                 child.frustumCulled = false
             }
         })
+    }
+
+    /** Warm sand disc so the club reads as beach, not grass island. */
+    buildSandPad(x, z)
+    {
+        const wet = new THREE.Mesh(
+            new THREE.CylinderGeometry(9.8, 10.2, 0.06, 40),
+            vibeMat('#d4a574', true)
+        )
+        wet.position.set(x, 0.03, z)
+        const dry = new THREE.Mesh(
+            new THREE.CylinderGeometry(8.2, 8.5, 0.08, 40),
+            vibeMat('#e9c46a', true)
+        )
+        dry.position.set(x, 0.06, z)
+        // Soft shore ripples
+        for(let i = 0; i < 6; i++)
+        {
+            const a = (i / 6) * Math.PI * 2
+            const ripple = new THREE.Mesh(
+                new THREE.TorusGeometry(7.2 + i * 0.35, 0.04, 6, 28),
+                vibeMat(i % 2 ? '#f4e3b0' : '#c9a227', true)
+            )
+            ripple.rotation.x = Math.PI / 2
+            ripple.position.set(x, 0.09, z)
+            ripple.scale.set(1, 1, 0.92 + (i % 3) * 0.03)
+            this.group.add(ripple)
+        }
+        this.group.add(wet, dry)
+    }
+
+    /** Hide bush/flower instances planted on the beach pad. */
+    clearNearbyFoliage(cx, cz, radius)
+    {
+        const targets = [
+            this.game.world?.bushes?.foliage,
+            this.game.world?.flowers?.foliage,
+        ]
+        const m = new THREE.Matrix4()
+        const p = new THREE.Vector3()
+        const q = new THREE.Quaternion()
+        const s = new THREE.Vector3()
+
+        for(const foliage of targets)
+        {
+            const mesh = foliage?.mesh
+            if(!mesh?.isInstancedMesh)
+                continue
+
+            for(let i = 0; i < mesh.count; i++)
+            {
+                mesh.getMatrixAt(i, m)
+                m.decompose(p, q, s)
+                if(Math.hypot(p.x - cx, p.z - cz) < radius)
+                {
+                    s.set(0, 0, 0)
+                    m.compose(p, q, s)
+                    mesh.setMatrixAt(i, m)
+                }
+            }
+            mesh.instanceMatrix.needsUpdate = true
+        }
     }
 
     buildUmbrella({ x, z, yaw, canopy, pole })
@@ -203,10 +271,10 @@ export class BowlingBeach
         this.group.add(log)
     }
 
-    setSign()
+    setSign(x, z)
     {
         const g = new THREE.Group()
-        g.position.set(9.2, 0, 51.2)
+        g.position.set(x, 0, z)
         const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.4, 0.12), vibeMat('#5c4033', true))
         post.position.y = 0.7
         const board = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.55, 0.08), vibeMat('#7b5cff', true))
@@ -218,10 +286,10 @@ export class BowlingBeach
         this.sign = g
     }
 
-    setInteract()
+    setInteract(x, z)
     {
         this.chatPoint = this.game.interactivePoints.create(
-            new THREE.Vector3(6.2, 1.2, 50.9),
+            new THREE.Vector3(x, 1.2, z),
             'Beach Club',
             InteractivePoints.ALIGN_RIGHT,
             InteractivePoints.STATE_CONCEALED,

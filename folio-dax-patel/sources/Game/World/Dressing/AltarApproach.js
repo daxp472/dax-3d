@@ -44,7 +44,7 @@ export class AltarApproach
             position: { x: 71.6, y: 0.55, z: -18.4 },
             yaw: 0.85,
             drink: 'chai',
-            outfit: 'indigo',
+            outfit: 'pearl',
             phase: 1.2,
         })
 
@@ -103,7 +103,7 @@ export class AltarApproach
             () =>
             {
                 this.game.notifications.show(
-                    `<div class="top"><div class="title">Cataclysm Road</div></div><div class="bottom"><div class="description">Drive into the pit — Hell Dimension opens. Sacrifice still counts.</div></div>`,
+                    `<div class="top"><div class="title">Cataclysm Road</div></div><div class="bottom"><div class="description">Drive into the pit — The Soft Stack opens. Sacrifice still counts.</div></div>`,
                     'altar-approach',
                     2.8,
                     null,

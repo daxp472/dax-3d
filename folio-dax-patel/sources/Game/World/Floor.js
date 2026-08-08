@@ -63,7 +63,8 @@ export class Floor
             // return vec3(slab)
             
             const finalColor = mix(baseColor, slabColor, slab)
-            return finalColor
+            const beachMask = this.game.terrain.beachMaskNode(positionWorld.xz)
+            return mix(finalColor, this.game.terrain.beachSandColor, beachMask)
         })()
 
         // Material

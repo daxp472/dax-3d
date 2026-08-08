@@ -25,7 +25,7 @@ export class SocialPlaza
             position: { x: 22.4, y: 0.72, z: -14.6 },
             yaw: 0.6,
             drink: 'coffee',
-            outfit: 'teal',
+            outfit: 'cocoa',
             phase: 0.5,
         })
         this.addPatron({
@@ -33,7 +33,7 @@ export class SocialPlaza
             position: { x: 29.6, y: 0.72, z: -14.9 },
             yaw: -1.0,
             drink: 'chai',
-            outfit: 'mango',
+            outfit: 'sand',
             phase: 2.0,
         })
 
@@ -43,7 +43,7 @@ export class SocialPlaza
             position: { x: 36.2, y: 0.72, z: -30.4 },
             yaw: 2.4,
             drink: 'coffee',
-            outfit: 'rose',
+            outfit: 'olive',
             phase: 1.4,
         })
 

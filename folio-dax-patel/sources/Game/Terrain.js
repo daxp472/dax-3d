@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu'
 import { Game } from './Game.js'
 import MeshGridMaterial, { MeshGridMaterialLine } from './Materials/MeshGridMaterial.js'
-import { color, Fn, mix, round, smoothstep, texture, uniform, uv, vec2 } from 'three/tsl'
+import { color, Fn, length, mix, smoothstep, texture, uniform, uv, vec2 } from 'three/tsl'
 
 export class Terrain
 {
@@ -51,8 +51,8 @@ export class Terrain
         const update = () =>
         {
             const gradient = context.createLinearGradient(0, 0, 0, height)
-            for(const color of this.colors)
-                gradient.addColorStop(color.stop, color.value)
+            for(const colorStop of this.colors)
+                gradient.addColorStop(colorStop.stop, colorStop.value)
 
             context.fillStyle = gradient
             context.fillRect(0, 0, 1, height)
@@ -61,21 +61,12 @@ export class Terrain
 
         update()
 
-        // // Debug
-        // canvas.style.position = 'fixed'
-        // canvas.style.zIndex = 999
-        // canvas.style.top = 0
-        // canvas.style.left = 0
-        // canvas.style.width = '128px'
-        // canvas.style.height = `256px`
-        // document.body.append(canvas)
-        
         if(this.game.debug.active)
         {
-            for(const color of this.colors)
+            for(const colorStop of this.colors)
             {
-                this.debugPanel.addBinding(color, 'stop', { min: 0, max: 1, step: 0.001 }).on('change', update)
-                this.debugPanel.addBinding(color, 'value', { view: 'color' }).on('change', update)
+                this.debugPanel.addBinding(colorStop, 'stop', { min: 0, max: 1, step: 0.001 }).on('change', update)
+                this.debugPanel.addBinding(colorStop, 'value', { view: 'color' }).on('change', update)
             }
         }
     }
@@ -84,6 +75,12 @@ export class Terrain
     {
         this.grassColorUniform = uniform(color('#b8b62e'))
         this.tracksDelta = uniform(vec2(0))
+
+        // Beach club clear — kill grass blades around BowlingBeach origin
+        this.beachClearCenter = uniform(vec2(-27.398, 74.268))
+        this.beachClearInner = uniform(6.5)
+        this.beachClearOuter = uniform(9.5)
+        this.beachSandColor = uniform(color('#e8c47a'))
 
         const worldPositionToUvNode = Fn(([position]) =>
         {
@@ -102,9 +99,14 @@ export class Terrain
             )
             data.g.mulAssign(groundDataColor.r.oneMinus())
 
+            // Soft-clear grass on beach pad (keep height/water B untouched)
+            const beachDist = length(position.sub(this.beachClearCenter))
+            const keepGrass = smoothstep(this.beachClearInner, this.beachClearOuter, beachDist)
+            data.g.mulAssign(keepGrass)
+
             return data
         })
-        
+
         this.colorNode = Fn(([terrainData]) =>
         {
             // Dirt and water
@@ -116,15 +118,24 @@ export class Terrain
             return baseColor.rgb
         })
 
+        /** 1 inside beach pad, 0 outside — for Floor sand tint. */
+        this.beachMaskNode = Fn(([position]) =>
+        {
+            const beachDist = length(position.sub(this.beachClearCenter))
+            return smoothstep(this.beachClearOuter, this.beachClearInner, beachDist)
+        })
+
         if(this.game.debug.active)
         {
             this.game.debug.addThreeColorBinding(this.debugPanel, this.grassColorUniform.value, 'grassColor')
+            this.game.debug.addThreeColorBinding(this.debugPanel, this.beachSandColor.value, 'beachSand')
+            this.debugPanel.addBinding(this.beachClearInner, 'value', { label: 'beachInner', min: 2, max: 20, step: 0.1 })
+            this.debugPanel.addBinding(this.beachClearOuter, 'value', { label: 'beachOuter', min: 3, max: 25, step: 0.1 })
         }
     }
-    
+
     update()
     {
-        // Tracks delta
         this.tracksDelta.value.set(
             this.game.tracks.focusPoint.x,
             this.game.tracks.focusPoint.y

@@ -6,7 +6,7 @@ import { PocketDimension } from './PocketDimension.js'
 import { vibeMat } from './VoxelPatron.js'
 
 /**
- * Altar pit → Hell Dimension teleport.
+ * Altar pit → Wonder Pocket teleport (Folio-style sealed playground).
  */
 export class VoidPortal
 {
@@ -31,7 +31,7 @@ export class VoidPortal
         this.tickCallback = () => this.update()
         this.game.ticker.events.on('tick', this.tickCallback, 12)
 
-        console.info('[VoidPortal] Hell gate ready @', VoidPortal.HOLE.toArray().map((n) => n.toFixed(1)).join(', '))
+        console.info('[VoidPortal] Soft Stack gate ready @', VoidPortal.HOLE.toArray().map((n) => n.toFixed(1)).join(', '))
     }
 
     buildMouthVfx()
@@ -81,7 +81,7 @@ export class VoidPortal
         p.y = 1.8
         this.mouthPoint = this.game.interactivePoints.create(
             p,
-            'Hell Gate',
+            'Soft Stack',
             InteractivePoints.ALIGN_RIGHT,
             InteractivePoints.STATE_CONCEALED,
             () => this.enterDimension('interact'),
@@ -116,7 +116,7 @@ export class VoidPortal
         this.game.inputs.filters.add('cinematic')
 
         this.game.notifications.show(
-            `<div class="top"><div class="title">Hell Dimension</div></div><div class="bottom"><div class="description">Altar opens. Crossing into a sealed build map…</div></div>`,
+            `<div class="top"><div class="title">The Soft Stack</div></div><div class="bottom"><div class="description">Altar opens. Crossing into a candy WIP pocket…</div></div>`,
             'void-portal',
             2.5,
             null,
@@ -163,7 +163,7 @@ export class VoidPortal
             this.game.overlay.hide()
 
             this.game.achievements?.setProgress?.('voidPortal', 1)
-            console.info(`[VoidPortal] entered hell via ${reason} @`, spawn.position.toArray().map((n) => n.toFixed(1)).join(', '))
+            console.info(`[VoidPortal] entered Soft Stack via ${reason} @`, spawn.position.toArray().map((n) => n.toFixed(1)).join(', '))
         })
     }
 

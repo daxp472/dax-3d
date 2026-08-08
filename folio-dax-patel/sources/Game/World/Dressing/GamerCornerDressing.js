@@ -137,7 +137,7 @@ export class GamerCornerDressing
             position: { x: -0.4, y: 0.55, z: 1.4 },
             yaw: Math.PI * 1.15,
             drink: 'coffee',
-            outfit: 'indigo',
+            outfit: 'sand',
             phase: 2.1,
         })
         this.group.add(patron.group)

@@ -43,7 +43,7 @@ export class BowlingLounge
             position: { x: -0.55, y: 0.95, z: 59.15 },
             yaw: Math.PI * 0.08,
             drink: 'chai',
-            outfit: 'mango',
+            outfit: 'cocoa',
             phase: 0.4,
         })
         this.addPatron({
@@ -51,7 +51,7 @@ export class BowlingLounge
             position: { x: 1.85, y: 0.95, z: 59.85 },
             yaw: Math.PI * 1.08,
             drink: 'coffee',
-            outfit: 'indigo',
+            outfit: 'sand',
             phase: 1.7,
         })
 
@@ -61,7 +61,7 @@ export class BowlingLounge
             position: { x: 9.15, y: 0.95, z: 59.2 },
             yaw: 0.2,
             drink: 'chai',
-            outfit: 'rose',
+            outfit: 'olive',
             phase: 2.9,
         })
     }
@@ -75,7 +75,7 @@ export class BowlingLounge
             position: { x: 4.82, y: 0.85, z: 73.83 },
             yaw: Math.PI * 0.35,
             drink: 'coffee',
-            outfit: 'teal',
+            outfit: 'pearl',
             phase: 0.9,
         })
         this.addPatron({

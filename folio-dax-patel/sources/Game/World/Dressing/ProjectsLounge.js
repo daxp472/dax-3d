@@ -29,7 +29,7 @@ export class ProjectsLounge
             position: { x: cx - 0.95, y: seatY, z: cz + 0.35 },
             yaw: Math.PI * 0.5,
             drink: 'coffee',
-            outfit: 'indigo',
+            outfit: 'cocoa',
             phase: 0.6,
         })
         this.addPatron({
@@ -37,7 +37,7 @@ export class ProjectsLounge
             position: { x: cx + 0.95, y: seatY, z: cz - 0.25 },
             yaw: -Math.PI * 0.55,
             drink: 'chai',
-            outfit: 'mango',
+            outfit: 'pearl',
             phase: 2.2,
         })
 
