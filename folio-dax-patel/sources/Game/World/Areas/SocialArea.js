@@ -7,6 +7,7 @@ import { InstancedGroup } from '../../InstancedGroup.js'
 import { Area } from './Area.js'
 import { View } from '../../View.js'
 import { MeshDefaultMaterial } from '../../Materials/MeshDefaultMaterial.js'
+import { SocialPlaza } from '../Dressing/SocialPlaza.js'
 
 export class SocialArea extends Area
 {
@@ -32,6 +33,19 @@ export class SocialArea extends Area
         this.setStatue()
         // this.setFWA()
         this.setAchievement()
+        this.setDressing()
+    }
+
+    setDressing()
+    {
+        try
+        {
+            this.plaza = new SocialPlaza()
+        }
+        catch(error)
+        {
+            console.error('[SocialArea] plaza dressing failed', error)
+        }
     }
 
     /**
@@ -469,5 +483,7 @@ export class SocialArea extends Area
             if(!object.physical.body.isSleeping() && object.physical.body.isEnabled())
                 object.visual.object3D.needsUpdate = true
         }
+
+        this.plaza?.update(this.game.ticker.elapsed)
     }
 }

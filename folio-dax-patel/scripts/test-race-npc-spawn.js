@@ -9,9 +9,14 @@ import {
     advanceArc,
     computeSpeedTier,
     obstacleCapFromDistance,
+    dodgeOffsetForObstacle,
+    cruiseForLap,
     NPC_CHASSIS_Y,
+    NPC_WHEEL_Y,
     LANE_HALF,
     tireBottomY,
+    chassisYForRoad,
+    signedLateralOffset,
     buildLinearTrackPoints,
     maxPolylineDeviation,
     buildDrivingLaneWaypoints,
@@ -84,9 +89,9 @@ test('corner sample stays at outer waypoint corridor (x≈30), not shortcut', ()
     assert.ok(shortcutD > 10, `shortcut should be far, got ${shortcutD}`)
 })
 
-test('LANE_HALF is 0 — centerline only', () =>
+test('LANE_HALF allows side grid + dodge', () =>
 {
-    assert.equal(LANE_HALF, 0)
+    assert.ok(LANE_HALF >= 1.2 && LANE_HALF <= 2.5)
 })
 
 test('no snap-back: 600 frames forward-only', () =>
@@ -146,34 +151,55 @@ test('obstacle oscillates on gate axis not world Z only', () =>
     assert.ok(Math.abs(atPeak.x - 5) > 4)
 })
 
-test('speed: straight fast, obstacle slow', () =>
+test('speed: cruise aims ~85s lap, obstacles cut hard', () =>
 {
+    const cruise = cruiseForLap(773, 85)
+    assert.ok(cruise > 8 && cruise < 10)
+
     const base = {
         turnAhead: 0,
         gap: 0,
-        straightSpeed: 8.5,
-        cruiseSpeed: 7.5,
-        cornerSpeed: 4.8,
-        obstacleSpeed: 3.2,
-        maxSpeed: 9.5,
+        straightSpeed: cruise * 1.15,
+        cruiseSpeed: cruise,
+        cornerSpeed: cruise * 0.72,
+        obstacleSpeed: cruise * 0.38,
+        maxSpeed: cruise * 1.28,
     }
     const straight = computeSpeedTier({ ...base, bend: 0.02, obstacleAhead: null })
-    const obs = computeSpeedTier({ ...base, bend: 0.02, obstacleAhead: 3.2 })
-    assert.ok(straight >= 8.0)
-    assert.ok(obs <= 3.25)
+    const obs = computeSpeedTier({ ...base, bend: 0.02, obstacleAhead: cruise * 0.2 })
+    assert.ok(straight >= cruise)
+    assert.ok(obs < cruise * 0.5)
 })
 
-test('obstacleCap conditions', () =>
+test('obstacleCap + dodge', () =>
 {
-    assert.equal(obstacleCapFromDistance(null, 2.8, 4), null)
-    assert.equal(obstacleCapFromDistance(2, 2.8, 4), 2.8)
+    assert.equal(obstacleCapFromDistance(null, 3, 6), null)
+    assert.ok(obstacleCapFromDistance(2, 3, 6) < 3)
+    const dodge = dodgeOffsetForObstacle({ ahead: 6, lateral: 0.2 })
+    assert.ok(Math.abs(dodge) > 0.2)
+    assert.equal(dodgeOffsetForObstacle({ ahead: 30, lateral: 0 }), 0)
 })
 
 test('tires on road', () =>
 {
-    const b = tireBottomY()
-    assert.ok(b > -0.05 && b < 0.25)
-    assert.equal(NPC_CHASSIS_Y, 0.88)
+    const restingChassis = chassisYForRoad()
+    const b = tireBottomY(restingChassis, NPC_WHEEL_Y)
+    assert.ok(b > -0.02 && b < 0.2, `tire bottom ${b} should sit on road`)
+    assert.ok(NPC_CHASSIS_Y >= 1.0 && NPC_CHASSIS_Y <= 1.2, `chassis ${NPC_CHASSIS_Y}`)
+    assert.ok(NPC_WHEEL_Y <= -0.5 && NPC_WHEEL_Y >= -0.85, `wheelY ${NPC_WHEEL_Y}`)
+})
+
+test('signed lateral + dodge picks opposite side', () =>
+{
+    // Point to the right of +X tangent → positive lateral
+    assert.ok(signedLateralOffset(0, 0, 0, 2, 1, 0) > 0)
+    assert.ok(signedLateralOffset(0, 0, 0, -2, 1, 0) < 0)
+
+    const rightCrate = dodgeOffsetForObstacle({ ahead: 6, lateral: 0.3 })
+    const leftCrate = dodgeOffsetForObstacle({ ahead: 6, lateral: -0.3 })
+    assert.ok(rightCrate < 0, 'dodge left when crate on right')
+    assert.ok(leftCrate > 0, 'dodge right when crate on left')
+    assert.notEqual(Math.sign(rightCrate), Math.sign(leftCrate))
 })
 
 test('wrapArc', () =>
@@ -212,6 +238,21 @@ test('rankRacers: player last when both rivals ahead', () =>
         ]
     )
     assert.equal(playerPlace, 3)
+})
+
+test('merged player racing line is dense world path', async () =>
+{
+    const fs = await import('node:fs')
+    const path = await import('node:path')
+    const { fileURLToPath } = await import('node:url')
+    const __dirname = path.dirname(fileURLToPath(import.meta.url))
+    const jsonPath = path.join(__dirname, '../sources/data/playerRacingLine.json')
+    const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'))
+
+    assert.ok(data.points.length > 200, 'need dense merged lap')
+    assert.equal(data.coordinateSpace, 'world')
+    assert.ok(data.lapLength > 400, 'lap should be hundreds of meters')
+    assert.ok(data.sources?.length >= 4, 'merged from 4 dumps')
 })
 
 test('baked circuit track path exists and is on-road validated', async () =>

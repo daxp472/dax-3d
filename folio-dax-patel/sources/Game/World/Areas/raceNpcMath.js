@@ -2,10 +2,40 @@
  * Pure NPC race math — no Game / Three scene deps (safe for Node tests).
  */
 
-export const NPC_CHASSIS_Y = 0.88
-export const LANE_HALF = 0
-export const NPC_WHEEL_Y = -0.38
+/**
+ * Resting stance — mirror player PhysicsVehicle + VisualVehicle on flat road:
+ * chassis ≈ 1.08, wheel container Y ≈ -0.68, radius 0.4 → tire bottom ≈ 0.
+ */
+export const NPC_ROAD_Y = 0
 export const NPC_WHEEL_RADIUS = 0.4
+/** Match VisualVehicle resting: baseY(0) - suspensionLength (~0.68), capped ≤ -0.5 */
+export const NPC_WHEEL_Y = -0.68
+/** road + radius - wheelLocalY */
+export const NPC_CHASSIS_Y = NPC_ROAD_Y + NPC_WHEEL_RADIUS - NPC_WHEEL_Y
+export const LANE_HALF = 1.6
+
+/** Target lap window (seconds) for ~770m player-recorded line. */
+export const TARGET_LAP_SEC_MIN = 80
+export const TARGET_LAP_SEC_MAX = 100
+/** Slightly quicker pack — still inside 80–100s, not full blast. */
+export const TARGET_LAP_SEC = 85
+
+/** Average cruise for a given lap length / target seconds. */
+export function cruiseForLap(lapLength, targetSec = TARGET_LAP_SEC)
+{
+    if(lapLength <= 0 || targetSec <= 0)
+        return 8
+    return clamp(lapLength / targetSec, 6, 12)
+}
+
+/**
+ * Chassis Y that keeps tire bottoms on the road for a given wheel local Y.
+ * Slight lift (clearance) avoids z-fight / mesh radius > physics radius.
+ */
+export function chassisYForRoad(wheelY = NPC_WHEEL_Y, radius = NPC_WHEEL_RADIUS, roadY = NPC_ROAD_Y, clearance = 0.06)
+{
+    return roadY + radius - wheelY + clearance
+}
 
 /**
  * Point-to-segment distance (XZ). Used to prove linear path stays on polyline.
@@ -171,41 +201,78 @@ export function computeSpeedTier({
 })
 {
     let target
-    if(bend < 0.08)
+    if(bend < 0.06)
         target = straightSpeed
-    else if(bend < 0.22)
-        target = lerp(cruiseSpeed, cornerSpeed, (bend - 0.08) / 0.14)
+    else if(bend < 0.18)
+        target = lerp(cruiseSpeed, cornerSpeed, (bend - 0.06) / 0.12)
     else
-        target = lerp(cornerSpeed, obstacleSpeed, Math.min(1, (bend - 0.22) / 0.35))
+        target = lerp(cornerSpeed, obstacleSpeed, Math.min(1, (bend - 0.18) / 0.4))
 
-    if(turnAhead > 0.45)
-        target = Math.min(target, lerp(cornerSpeed, obstacleSpeed, Math.min(1, (turnAhead - 0.45) / 0.9)))
+    // Earlier turn-in brake so pack doesn't plow corners
+    if(turnAhead > 0.35)
+        target = Math.min(target, lerp(cruiseSpeed, cornerSpeed, Math.min(1, (turnAhead - 0.35) / 0.7)))
+    if(turnAhead > 0.7)
+        target = Math.min(target, lerp(cornerSpeed, obstacleSpeed, Math.min(1, (turnAhead - 0.7) / 0.6)))
 
     if(obstacleAhead !== null && obstacleAhead !== undefined)
         target = Math.min(target, obstacleAhead)
 
     if(gap >= 2)
-        target = Math.min(maxSpeed, target * 1.06)
+        target = Math.min(maxSpeed, target * 1.05)
     else if(gap <= -2)
-        target *= 0.92
+        target *= 0.9
 
-    return clamp(target, obstacleSpeed * 0.85, maxSpeed)
+    return clamp(target, obstacleSpeed * 0.8, maxSpeed)
 }
 
 export function obstacleCapFromDistance(ahead, obstacleSpeed, cornerSpeed)
 {
     if(ahead === null || ahead === Infinity)
         return null
-    if(ahead < 0.5 || ahead > 16)
+    if(ahead < 0.4 || ahead > 24)
         return null
     if(ahead < 3.5)
-        return obstacleSpeed
-    if(ahead < 9)
-        return lerp(obstacleSpeed, cornerSpeed, (ahead - 3.5) / 5.5)
+        return obstacleSpeed * 0.5
+    if(ahead < 8)
+        return lerp(obstacleSpeed * 0.5, obstacleSpeed, (ahead - 3.5) / 4.5)
+    if(ahead < 16)
+        return lerp(obstacleSpeed, cornerSpeed, (ahead - 8) / 8)
     return null
 }
 
-/** Tire bottom world Y — must be near 0, not deep negative. */
+/**
+ * Signed lateral dodge when a crate sits on the racing line ahead.
+ * `lateral` must be signed (path-right positive). Returns lane offset meters.
+ */
+export function dodgeOffsetForObstacle({ ahead, lateral, look = 18, maxDodge = 1.45 })
+{
+    if(ahead === null || ahead === undefined || ahead <= 0 || ahead > look)
+        return 0
+
+    const absLat = Math.abs(lateral)
+    // Far off the line already — no dodge needed
+    if(absLat > 3.0)
+        return 0
+    // Clear of crate width — keep current lane
+    if(absLat > 1.25)
+        return 0
+
+    const urgency = clamp(1 - ahead / look, 0, 1)
+    // Soften when already slightly off-center
+    const need = clamp(1 - absLat / 1.25, 0.25, 1)
+    const side = lateral >= 0 ? -1 : 1 // opposite side of crate
+    return side * maxDodge * urgency * need
+}
+
+/**
+ * 2D cross (tx,tz) × (dx,dz) — positive = point is to the right of tangent.
+ */
+export function signedLateralOffset(px, pz, ox, oz, tx, tz)
+{
+    return tx * (oz - pz) - tz * (ox - px)
+}
+
+/** Tire bottom world Y — must be near road (small positive), not deep negative. */
 export function tireBottomY(chassisY = NPC_CHASSIS_Y, wheelY = NPC_WHEEL_Y, radius = NPC_WHEEL_RADIUS)
 {
     return chassisY + wheelY - radius

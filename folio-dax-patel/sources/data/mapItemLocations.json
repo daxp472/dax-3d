@@ -1,0 +1,531 @@
+{
+  "generatedAt": "2026-08-08T11:52:19.975Z",
+  "count": 75,
+  "items": [
+    {
+      "name": "physicalFixed.008",
+      "area": "achievements",
+      "x": 69.66,
+      "y": 0,
+      "z": 12.41
+    },
+    {
+      "name": "altar",
+      "area": "altar",
+      "x": 75.34,
+      "y": 0,
+      "z": -27.95
+    },
+    {
+      "name": "physicalFixed.005",
+      "area": "altar",
+      "x": 75.35,
+      "y": 0.94,
+      "z": -27.94
+    },
+    {
+      "name": "lightGeneratorPhysicalDynamic.001",
+      "area": "behindTheScene",
+      "x": 54.18,
+      "y": 1.86,
+      "z": -16.06
+    },
+    {
+      "name": "lightGeneratorPhysicalDynamic.003",
+      "area": "behindTheScene",
+      "x": 47.49,
+      "y": 1.86,
+      "z": -9.05
+    },
+    {
+      "name": "ball.001",
+      "area": "bowling",
+      "x": 11.83,
+      "y": 0.97,
+      "z": 67.78
+    },
+    {
+      "name": "barPhysicalDynamic.001",
+      "area": "bowling",
+      "x": 6.66,
+      "y": 1.01,
+      "z": 76
+    },
+    {
+      "name": "couchPhysicalDynamic",
+      "area": "bowling",
+      "x": -1.18,
+      "y": 1.11,
+      "z": 59.47
+    },
+    {
+      "name": "couchPhysicalDynamic.001",
+      "area": "bowling",
+      "x": 2.49,
+      "y": 1.11,
+      "z": 59.47
+    },
+    {
+      "name": "couchPhysicalDynamic.002",
+      "area": "bowling",
+      "x": 8.5,
+      "y": 1.11,
+      "z": 59.47
+    },
+    {
+      "name": "couchPhysicalDynamic.003",
+      "area": "bowling",
+      "x": 12.17,
+      "y": 1.11,
+      "z": 59.47
+    },
+    {
+      "name": "physicalFixed.007",
+      "area": "bowling",
+      "x": 5.25,
+      "y": 0.03,
+      "z": 67.77
+    },
+    {
+      "name": "sauceKetchupPhysicalDynamic",
+      "area": "bowling",
+      "x": 0.65,
+      "y": 1.6,
+      "z": 59.5
+    },
+    {
+      "name": "sauceKetchupPhysicalDynamic.001",
+      "area": "bowling",
+      "x": 10.26,
+      "y": 1.6,
+      "z": 59.22
+    },
+    {
+      "name": "sauceKetchupPhysicalDynamic.002",
+      "area": "bowling",
+      "x": 6.17,
+      "y": 1.87,
+      "z": 76.25
+    },
+    {
+      "name": "sauceMustardPhysicalDynamic",
+      "area": "bowling",
+      "x": 0.84,
+      "y": 1.6,
+      "z": 59.15
+    },
+    {
+      "name": "sauceMustardPhysicalDynamic.001",
+      "area": "bowling",
+      "x": 10.59,
+      "y": 1.6,
+      "z": 59.43
+    },
+    {
+      "name": "sauceMustardPhysicalDynamic.002",
+      "area": "bowling",
+      "x": 6.13,
+      "y": 1.87,
+      "z": 75.85
+    },
+    {
+      "name": "stoolPhysicalDynamic.001",
+      "area": "bowling",
+      "x": 4.7,
+      "y": 0.82,
+      "z": 78.17
+    },
+    {
+      "name": "stoolPhysicalDynamic.002",
+      "area": "bowling",
+      "x": 4.82,
+      "y": 0.82,
+      "z": 73.83
+    },
+    {
+      "name": "stoolPhysicalDynamic.003",
+      "area": "bowling",
+      "x": 7.28,
+      "y": 0.82,
+      "z": 73.8
+    },
+    {
+      "name": "stoolPhysicalDynamic.007",
+      "area": "bowling",
+      "x": 7.22,
+      "y": 0.82,
+      "z": 78.1
+    },
+    {
+      "name": "tablePhysicalDynamic.001",
+      "area": "bowling",
+      "x": 0.65,
+      "y": 1.17,
+      "z": 59.5
+    },
+    {
+      "name": "tablePhysicalDynamic.002",
+      "area": "bowling",
+      "x": 10.33,
+      "y": 1.17,
+      "z": 59.5
+    },
+    {
+      "name": "bumpersPhysicalFixed.001",
+      "area": "circuit",
+      "x": -80.86,
+      "y": 0.01,
+      "z": 40.96
+    },
+    {
+      "name": "physicalFixed.004",
+      "area": "circuit",
+      "x": -25.29,
+      "y": 0.01,
+      "z": -3.78
+    },
+    {
+      "name": "physicalFixed.006",
+      "area": "circuit",
+      "x": -24.44,
+      "y": 0,
+      "z": 2.03
+    },
+    {
+      "name": "blowerPhysicalDynamic.001",
+      "area": "cookie",
+      "x": 13.08,
+      "y": 0.53,
+      "z": 31
+    },
+    {
+      "name": "cookie",
+      "area": "cookie",
+      "x": 12.25,
+      "y": 3.27,
+      "z": 35.25
+    },
+    {
+      "name": "cookiePhysicalFixed",
+      "area": "cookie",
+      "x": 11.29,
+      "y": 1.69,
+      "z": 31.94
+    },
+    {
+      "name": "tablePhysicalDynamic",
+      "area": "cookie",
+      "x": 13.67,
+      "y": 0.49,
+      "z": 39
+    },
+    {
+      "name": "ball",
+      "area": "lab",
+      "x": 11.14,
+      "y": 0.77,
+      "z": 17.3
+    },
+    {
+      "name": "blackBoardPhysicalDynamic.001",
+      "area": "lab",
+      "x": 8.99,
+      "y": 0.01,
+      "z": 17.58
+    },
+    {
+      "name": "cauldronPhysicalDynamic",
+      "area": "lab",
+      "x": 11.14,
+      "y": 0.65,
+      "z": 17.3
+    },
+    {
+      "name": "mainTablePhysicalDynamic.001",
+      "area": "lab",
+      "x": 13.18,
+      "y": 0.53,
+      "z": 16.69
+    },
+    {
+      "name": "physicalFixed",
+      "area": "lab",
+      "x": 13.19,
+      "y": 1,
+      "z": 16.66
+    },
+    {
+      "name": "sideTablePhysicalDynamic",
+      "area": "lab",
+      "x": 15.61,
+      "y": 0.53,
+      "z": 15.46
+    },
+    {
+      "name": "table.004",
+      "area": "lab",
+      "x": 13.25,
+      "y": 0.49,
+      "z": 16.65
+    },
+    {
+      "name": "gamepadPhysicalDynamic.001",
+      "area": "landing",
+      "x": 57.47,
+      "y": 0.62,
+      "z": 32.31
+    },
+    {
+      "name": "gizmoPhysicalDynamic",
+      "area": "landing",
+      "x": 55.27,
+      "y": 0.92,
+      "z": 30.88
+    },
+    {
+      "name": "phonePhysicalDynamic",
+      "area": "landing",
+      "x": 57.33,
+      "y": 0.51,
+      "z": 30.29
+    },
+    {
+      "name": "phonePhysicalDynamic.001",
+      "area": "landing",
+      "x": 57.33,
+      "y": 0.51,
+      "z": 30.29
+    },
+    {
+      "name": "phonePhysicalDynamic.002",
+      "area": "landing",
+      "x": 57.33,
+      "y": 0.51,
+      "z": 30.29
+    },
+    {
+      "name": "physicalFixed.003",
+      "area": "landing",
+      "x": 44.57,
+      "y": 1.51,
+      "z": 31.77
+    },
+    {
+      "name": "physicalFixed.009",
+      "area": "landing",
+      "x": 46.15,
+      "y": 3.27,
+      "z": 30.79
+    },
+    {
+      "name": "sword",
+      "area": "landing",
+      "x": 56.27,
+      "y": 1.2,
+      "z": 46.97
+    },
+    {
+      "name": "blackBoardPhysicalDynamic",
+      "area": "projects",
+      "x": 31.64,
+      "y": 0.01,
+      "z": 12.39
+    },
+    {
+      "name": "blowerPhysicalDynamic",
+      "area": "projects",
+      "x": 33.46,
+      "y": 0.53,
+      "z": 13.59
+    },
+    {
+      "name": "grinderPhysicalDynamic",
+      "area": "projects",
+      "x": 39.8,
+      "y": 0.96,
+      "z": 9.2
+    },
+    {
+      "name": "mainTablePhysicalDynamic",
+      "area": "projects",
+      "x": 36.61,
+      "y": 0.53,
+      "z": 12.15
+    },
+    {
+      "name": "physicalFixed.001",
+      "area": "projects",
+      "x": 36.7,
+      "y": 0,
+      "z": 12.15
+    },
+    {
+      "name": "quenchPhysicalDynamic.001",
+      "area": "projects",
+      "x": 40.04,
+      "y": 1.15,
+      "z": 7.57
+    },
+    {
+      "name": "table.002",
+      "area": "projects",
+      "x": 37.05,
+      "y": 0.49,
+      "z": 9.67
+    },
+    {
+      "name": "baguiraPhysicalDynamic",
+      "area": "social",
+      "x": 26.09,
+      "y": 1.53,
+      "z": -18.94
+    },
+    {
+      "name": "blueskyPhysicalDynamic.001",
+      "area": "social",
+      "x": 33.05,
+      "y": 1.64,
+      "z": -21.35
+    },
+    {
+      "name": "boyPhysicalDynamic",
+      "area": "social",
+      "x": 26.93,
+      "y": 1.53,
+      "z": -17.23
+    },
+    {
+      "name": "discordPhysicalDynamic",
+      "area": "social",
+      "x": 18.14,
+      "y": 1.57,
+      "z": -18.14
+    },
+    {
+      "name": "gitHubPhysicalDynamic",
+      "area": "social",
+      "x": 21.05,
+      "y": 1.51,
+      "z": -24.23
+    },
+    {
+      "name": "linkedInPhysicalDynamic",
+      "area": "social",
+      "x": 18.85,
+      "y": 1.54,
+      "z": -21.5
+    },
+    {
+      "name": "mailPhysicalDynamic",
+      "area": "social",
+      "x": 27.68,
+      "y": 1.06,
+      "z": -25.18
+    },
+    {
+      "name": "onlyfansPhysicalDynamic",
+      "area": "social",
+      "x": 39.57,
+      "y": 1.37,
+      "z": -33.21
+    },
+    {
+      "name": "physicalFixed.002",
+      "area": "social",
+      "x": 25.95,
+      "y": 0,
+      "z": -18.09
+    },
+    {
+      "name": "sudoPhysicalDynamic",
+      "area": "social",
+      "x": 25.39,
+      "y": 1.53,
+      "z": -17.53
+    },
+    {
+      "name": "twitchPhysicalDynamic",
+      "area": "social",
+      "x": 24.21,
+      "y": 1.46,
+      "z": -25.81
+    },
+    {
+      "name": "xPhysicalDynamic",
+      "area": "social",
+      "x": 33.82,
+      "y": 1.38,
+      "z": -18.11
+    },
+    {
+      "name": "youtubePhysicalDynamic",
+      "area": "social",
+      "x": 30.87,
+      "y": 1.32,
+      "z": -24.21
+    },
+    {
+      "name": "cupPhysicalDynamic",
+      "area": "timeMachine",
+      "x": -54.02,
+      "y": 2.23,
+      "z": -69.15
+    },
+    {
+      "name": "cupPhysicalDynamic.001",
+      "area": "timeMachine",
+      "x": -54.47,
+      "y": 2.23,
+      "z": -69.39
+    },
+    {
+      "name": "cupPhysicalDynamic.002",
+      "area": "timeMachine",
+      "x": -53.27,
+      "y": 0.15,
+      "z": -69.08
+    },
+    {
+      "name": "physicalFixed.010",
+      "area": "timeMachine",
+      "x": -54.53,
+      "y": 0.69,
+      "z": -67.4
+    },
+    {
+      "name": "stoolPhysicalDynamic.004",
+      "area": "timeMachine",
+      "x": -54.52,
+      "y": 1.04,
+      "z": -65.54
+    },
+    {
+      "name": "paperPhysicalDynamic",
+      "area": "toilet",
+      "x": 65.01,
+      "y": 1.39,
+      "z": 65.39
+    },
+    {
+      "name": "paperPhysicalDynamic.001",
+      "area": "toilet",
+      "x": 65.09,
+      "y": 1.38,
+      "z": 65.75
+    },
+    {
+      "name": "paperPhysicalDynamic.002",
+      "area": "toilet",
+      "x": 65.02,
+      "y": 1.71,
+      "z": 65.56
+    },
+    {
+      "name": "stoolPhysicalDynamic",
+      "area": "toilet",
+      "x": 67.51,
+      "y": 0.66,
+      "z": 64.7
+    }
+  ]
+}

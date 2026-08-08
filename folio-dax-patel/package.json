@@ -11,6 +11,7 @@
     "validate:npcs": "node scripts/validate-npcs.js",
     "test:race-npc": "node scripts/test-race-npc-spawn.js",
     "extract:circuit-track": "node scripts/extract-circuit-track.js",
+    "merge:drive-tracks": "node scripts/merge-drive-tracks.js",
     "download:npcs": "node scripts/download-npc-assets.js"
   },
   "author": "",

@@ -4,6 +4,7 @@ import { attribute, clamp, color, float, Fn, instancedArray, instanceIndex, lumi
 import gsap from 'gsap'
 import { alea } from 'seedrandom'
 import { Area } from './Area.js'
+import { AltarApproach } from '../Dressing/AltarApproach.js'
 
 export class AltarArea extends Area
 {
@@ -34,6 +35,7 @@ export class AltarArea extends Area
         this.setDeathZone()
         this.setData()
         this.setAchievement()
+        this.setDressing()
 
         // Offline counter
         if(!this.game.server.connected)
@@ -49,6 +51,18 @@ export class AltarArea extends Area
         {
             this.game.debug.addThreeColorBinding(this.debugPanel, this.color.value, 'color')
             this.debugPanel.addBinding(this.emissive, 'value', { label: 'emissive', min: 0, max: 10, step: 0.1 })
+        }
+    }
+
+    setDressing()
+    {
+        try
+        {
+            this.approach = new AltarApproach()
+        }
+        catch(error)
+        {
+            console.error('[AltarArea] approach dressing failed', error)
         }
     }
 
@@ -403,13 +417,19 @@ export class AltarArea extends Area
                 this.animateBeamParticles()
                 this.data.insert()
                 this.updateText(this.value + 1)
-                this.game.player.die()
                 this.sounds.deathBell2.play()
                 gsap.delayedCall(2.2, () =>
                 {
                     this.sounds.deathBell1.play()
                 })
                 this.game.achievements.setProgress('sacrifice', 1)
+
+                // Folio 2.0 — altar pit opens the Build Dimension (not nearby respawn)
+                const portal = this.game.world?.voidPortal
+                if(portal && !portal.inDimension && !portal.transitioning)
+                    portal.enterFromAltar()
+                else
+                    this.game.player.die()
             }
         )
     }
@@ -513,5 +533,10 @@ export class AltarArea extends Area
         {
             this.game.achievements.setProgress('areas', 'altar')
         })
+    }
+
+    update()
+    {
+        this.approach?.update(this.game.ticker.elapsed)
     }
 }

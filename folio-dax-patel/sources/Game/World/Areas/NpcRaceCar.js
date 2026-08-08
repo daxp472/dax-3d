@@ -72,15 +72,20 @@ export class NpcRaceCar
         this.parts.chassis.rotation.reorder('YXZ')
         this.parts.chassis.visible = false
         this.parts.chassis.frustumCulled = false
+        // Template may carry Blender local offsets — zero so world pose is authoritative
+        this.parts.chassis.position.set(0, 0, 0)
+        this.parts.chassis.scale.set(1, 1, 1)
 
-        // Strip any wheels that came with the clone — rebuild cleanly like VisualVehicle
-        const staleWheels = []
+        // Strip ANY leftover wheel / tire nodes from the clone (source of sunk tires)
+        const stale = []
         this.parts.chassis.traverse((child) =>
         {
-            if(/^wheelContainer/i.test(child.name))
-                staleWheels.push(child)
+            if(child === this.parts.chassis)
+                return
+            if(/wheel|tire|tyre/i.test(child.name))
+                stale.push(child)
         })
-        for(const node of staleWheels)
+        for(const node of stale)
             node.removeFromParent()
 
         this.parts.chassis.traverse((child) =>
@@ -108,7 +113,8 @@ export class NpcRaceCar
     }
 
     /**
-     * Mirror VisualVehicle.setWheels — 4 tires at physics wheel offsets.
+     * Mirror VisualVehicle.setWheels + resting suspension (flat road).
+     * Wheel Y chosen so tire bottoms sit on road when chassis is at NPC_CHASSIS_Y.
      */
     setupWheels()
     {
@@ -132,8 +138,9 @@ export class NpcRaceCar
             return
         }
 
-        // XZ match PhysicsVehicle; Y so tires sit on road with chassis at NPC_CHASSIS_Y
-        const wheelY = NPC_WHEEL_Y
+        // Prefer live player wheel XZ if available; Y always resting stance
+        const playerItems = this.game.world?.visualVehicle?.wheels?.items
+        const wheelY = this.resolveRestingWheelY(playerItems)
         const offsets = [
             new THREE.Vector3(0.90, wheelY, 0.75),
             new THREE.Vector3(0.90, wheelY, -0.75),
@@ -141,11 +148,26 @@ export class NpcRaceCar
             new THREE.Vector3(-0.90, wheelY, -0.75),
         ]
 
+        if(playerItems?.length === 4)
+        {
+            for(let i = 0; i < 4; i++)
+            {
+                const src = playerItems[i]?.container?.position
+                if(src)
+                {
+                    offsets[i].x = src.x
+                    offsets[i].z = src.z
+                }
+            }
+        }
+
         for(let i = 0; i < 4; i++)
         {
             const container = template.clone(true)
+            container.name = `npcWheelContainer_${i}`
             container.visible = true
             container.frustumCulled = false
+            container.scale.set(1, 1, 1)
             this.parts.chassis.add(container)
             container.position.copy(offsets[i])
             container.rotation.set(0, (i === 0 || i === 2) ? Math.PI : 0, 0)
@@ -166,12 +188,39 @@ export class NpcRaceCar
             if(wheel.cylinder)
                 wheel.cylinder.position.set(0, 0, 0)
 
-            // Collapse suspension so tires aren't stretched into the ground
+            // Same rest formula as VisualVehicle: scale.y = |wheelY| - 0.5
             if(wheel.suspension)
-                wheel.suspension.scale.set(1, 0.02, 1)
+            {
+                const suspensionScale = Math.max(0.02, Math.abs(container.position.y) - 0.5)
+                wheel.suspension.scale.set(1, suspensionScale, 1)
+            }
 
             this.wheels.items.push(wheel)
         }
+
+        this.restingWheelY = wheelY
+    }
+
+    resolveRestingWheelY(playerItems)
+    {
+        // If player is settled on road, reuse their wheel Y (clamped like VisualVehicle)
+        if(playerItems?.length)
+        {
+            let sum = 0
+            let n = 0
+            for(const item of playerItems)
+            {
+                const y = item?.container?.position?.y
+                if(typeof y === 'number' && Number.isFinite(y) && y <= -0.45 && y >= -0.95)
+                {
+                    sum += y
+                    n++
+                }
+            }
+            if(n)
+                return sum / n
+        }
+        return NPC_WHEEL_Y
     }
 
     applyPaint()
@@ -203,12 +252,15 @@ export class NpcRaceCar
         this.parts.chassis.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw)
 
         this.steering += (steer - this.steering) * Math.min(1, delta * 10)
-        // Match player wheel spin feel (VisualVehicle uses ~0.006 * forwardSpeed)
         const spin = speed * delta * 1.6
+        const wheelY = this.restingWheelY ?? NPC_WHEEL_Y
 
         for(let i = 0; i < this.wheels.items.length; i++)
         {
             const wheel = this.wheels.items[i]
+            // Lock tire height every frame — prevents any drift/sink
+            wheel.container.position.y = wheelY
+
             if(wheel.cylinder)
             {
                 if(i === 0 || i === 2)
@@ -220,6 +272,12 @@ export class NpcRaceCar
                 wheel.container.rotation.y = Math.PI + this.steering
             if(i === 1)
                 wheel.container.rotation.y = this.steering
+
+            if(wheel.suspension)
+            {
+                const suspensionScale = Math.max(0.02, Math.abs(wheelY) - 0.5)
+                wheel.suspension.scale.y = suspensionScale
+            }
         }
     }
 

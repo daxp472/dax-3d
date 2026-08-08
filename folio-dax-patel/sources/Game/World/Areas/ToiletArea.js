@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu'
 import { Game } from '../../Game.js'
 import { Area } from './Area.js'
+import { ToiletTrail } from '../Dressing/ToiletTrail.js'
 
 export class ToiletArea extends Area
 {
@@ -11,6 +12,19 @@ export class ToiletArea extends Area
         this.setCabin()
         this.setCandleFlames()
         this.setAchievement()
+        this.setDressing()
+    }
+
+    setDressing()
+    {
+        try
+        {
+            this.trail = new ToiletTrail()
+        }
+        catch(error)
+        {
+            console.error('[ToiletArea] trail dressing failed', error)
+        }
     }
 
     setCabin()
@@ -51,5 +65,7 @@ export class ToiletArea extends Area
                 this.game.achievements.setProgress('toiletDown', 1)
             }
         }
+
+        this.trail?.update(this.game.ticker.elapsed)
     }
 }

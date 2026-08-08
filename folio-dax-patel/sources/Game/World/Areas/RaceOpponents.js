@@ -4,13 +4,20 @@ import { NpcRaceCar } from './NpcRaceCar.js'
 import { segmentCircleIntersection, smallestAngle } from '../../utilities/maths.js'
 import {
     NPC_CHASSIS_Y,
+    LANE_HALF,
     wrapArc,
     forwardDelta,
     advanceArc,
     computeSpeedTier,
     obstacleCapFromDistance,
+    dodgeOffsetForObstacle,
+    cruiseForLap,
     rankRacers,
+    chassisYForRoad,
+    signedLateralOffset,
+    NPC_WHEEL_Y,
 } from './raceNpcMath.js'
+import playerRacingLine from '../../../data/playerRacingLine.json' with { type: 'json' }
 
 export {
     NPC_CHASSIS_Y,
@@ -20,10 +27,18 @@ export {
     advanceArc,
     computeSpeedTier,
     obstacleCapFromDistance,
+    dodgeOffsetForObstacle,
+    cruiseForLap,
     rankRacers,
+    chassisYForRoad,
+    signedLateralOffset,
+    NPC_WHEEL_Y,
 } from './raceNpcMath.js'
 
-/** Two rivals — different paint + pace so the user gets real competition. */
+/** Lap ~773m → cruise ~9.1 for ~85s. Profiles stay under full-blast. */
+const LAP_LEN = playerRacingLine?.lapLength || 773
+const BASE_CRUISE = cruiseForLap(LAP_LEN, 85)
+
 const RIVAL_PROFILES = [
     {
         id: 'rivalCyan',
@@ -31,14 +46,15 @@ const RIVAL_PROFILES = [
         paintName: 'npcRivalCyan',
         colorFrom: '#3ecfff',
         colorTo: '#0066aa',
-        gridOffset: 3.5,
-        straightSpeed: 8.5,
-        cruiseSpeed: 7.5,
-        cornerSpeed: 4.8,
-        obstacleSpeed: 3.2,
-        maxSpeed: 9.5,
-        accel: 4.0,
-        brake: 10.0,
+        gridOffset: 4,
+        lane: -1.25,
+        straightSpeed: BASE_CRUISE * 1.15,
+        cruiseSpeed: BASE_CRUISE,
+        cornerSpeed: BASE_CRUISE * 0.72,
+        obstacleSpeed: BASE_CRUISE * 0.38,
+        maxSpeed: BASE_CRUISE * 1.28,
+        accel: 4.2,
+        brake: 11,
     },
     {
         id: 'rivalMagenta',
@@ -46,21 +62,21 @@ const RIVAL_PROFILES = [
         paintName: 'npcRivalMagenta',
         colorFrom: '#ff5ec4',
         colorTo: '#9b0066',
-        gridOffset: 7,
-        straightSpeed: 8.1,
-        cruiseSpeed: 7.1,
-        cornerSpeed: 4.6,
-        obstacleSpeed: 3.1,
-        maxSpeed: 9.1,
+        gridOffset: 7.5,
+        lane: 1.25,
+        straightSpeed: BASE_CRUISE * 1.08,
+        cruiseSpeed: BASE_CRUISE * 0.94,
+        cornerSpeed: BASE_CRUISE * 0.68,
+        obstacleSpeed: BASE_CRUISE * 0.36,
+        maxSpeed: BASE_CRUISE * 1.18,
         accel: 3.6,
-        brake: 9.5,
+        brake: 10,
     },
 ]
 
 /**
- * Full-lap path baked from areas.glb + road cuboid validation.
- * Every point is on drivable asphalt (same envelope as player physics).
- * Regenerate: npm run extract:circuit-track
+ * Prefer merged F3 player laps (world XZ). Fallback: checkpoint respawn lane.
+ * Regenerate player line: npm run merge:drive-tracks
  */
 export class RacingLine
 {
@@ -73,13 +89,17 @@ export class RacingLine
         this.total = 1
         this.waypoints = []
         this.source = 'dynamic'
-        this.build(checkpoints, startPosition)
+
+        if(playerRacingLine?.points?.length >= 50)
+            this.buildFromBaked(playerRacingLine)
+        else
+            this.build(checkpoints, startPosition)
     }
 
     buildFromBaked(bakedTrack)
     {
-        this.source = 'baked'
-        this.waypoints = (bakedTrack.waypoints ?? []).map((p) => new THREE.Vector3(p.x, 0, p.z))
+        this.source = bakedTrack.source?.includes('player') ? 'player-drive' : 'baked'
+        this.waypoints = (bakedTrack.waypoints ?? bakedTrack.points ?? []).map((p) => new THREE.Vector3(p.x, 0, p.z))
 
         this.points = bakedTrack.points.map((p) => new THREE.Vector3(p.x, 0, p.z))
 
@@ -101,6 +121,7 @@ export class RacingLine
         }
 
         this.buildTangentsAndCurvature()
+        console.info(`[RacingLine] ${this.source} · ${this.points.length} pts · ${this.total.toFixed(1)}m`)
     }
 
     buildTangentsAndCurvature()
@@ -224,7 +245,12 @@ export class RacingLine
                 bestI = i
             }
         }
-        return { s: this.lengths[bestI], lateral: Math.sqrt(bestD2) }
+
+        const p = this.points[bestI]
+        const t = this.tangents[bestI] || { x: 1, z: 0 }
+        // Signed: +right / -left of racing-line tangent (needed for real dodges)
+        const lateral = signedLateralOffset(p.x, p.z, x, z, t.x, t.z)
+        return { s: this.lengths[bestI], lateral, distance: Math.sqrt(bestD2) }
     }
 
     aheadCurvature(s, lookAhead = 14)
@@ -330,6 +356,8 @@ export class RaceOpponents
                 visual,
                 profile,
                 s: 0,
+                lane: profile.lane,
+                laneSmoothed: profile.lane,
                 reachedCount: 0,
                 speed: 0,
                 yaw: 0,
@@ -371,7 +399,10 @@ export class RaceOpponents
         return cps.items[rival.reachedCount % (cps.count + 1)]
     }
 
-    /** Same oscillating crates the player hits (gate-axis path from CircuitArea). */
+    /**
+     * LIVE crate positions — prefer physics body (player can knock them),
+     * fallback to oscillating formula.
+     */
     getObstaclePositions()
     {
         const items = this.circuit.obstacles?.items
@@ -379,24 +410,42 @@ export class RaceOpponents
             return []
 
         const t = this.circuit.timer?.elapsedTime ?? this.game.ticker.elapsed
-        return items.map((obs) => this.circuit.getObstaclePosition(obs, t))
+        return items.map((obs) =>
+        {
+            const body = obs.object?.physical?.body
+            if(body && typeof body.translation === 'function')
+            {
+                const tr = body.translation()
+                return new THREE.Vector3(tr.x, tr.y, tr.z)
+            }
+            return this.circuit.getObstaclePosition(obs, t)
+        })
+    }
+
+    /** Nearest live obstacle ahead on the line (forward distance + signed lateral). */
+    nearestObstacleAhead(s)
+    {
+        let best = null
+        for(const p of this.getObstaclePositions())
+        {
+            const proj = this.line.project(p.x, p.z)
+            if((proj.distance ?? Math.abs(proj.lateral)) > 4)
+                continue
+            const ahead = forwardDelta(s, proj.s, this.line.total)
+            if(ahead <= 0.15 || ahead > 22)
+                continue
+            if(!best || ahead < best.ahead)
+                best = { ahead, lateral: proj.lateral, x: p.x, z: p.z }
+        }
+        return best
     }
 
     obstacleSpeedCap(s, rival)
     {
-        let minAhead = Infinity
-        for(const p of this.getObstaclePositions())
-        {
-            const ahead = this.line.forwardDistanceFrom(s, p.x, p.z)
-            if(ahead <= 0)
-                continue
-            if(this.line.project(p.x, p.z).lateral > 3.5)
-                continue
-            minAhead = Math.min(minAhead, ahead)
-        }
-        if(minAhead === Infinity)
+        const hit = this.nearestObstacleAhead(s)
+        if(!hit)
             return null
-        return obstacleCapFromDistance(minAhead, rival.obstacleSpeed, rival.cornerSpeed)
+        return obstacleCapFromDistance(hit.ahead, rival.obstacleSpeed, rival.cornerSpeed)
     }
 
     hide()
@@ -411,11 +460,48 @@ export class RaceOpponents
             rival.visual.setVisible(true)
     }
 
-    placeFromS(s, out = this._pos)
+    /**
+     * Fixed road stance — do NOT mirror player jump/fall Y (that sunk NPCs).
+     * Only trust player/visual chassis when settled on asphalt.
+     */
+    chassisWorldY()
+    {
+        const resting = chassisYForRoad()
+        const candidates = [
+            this.game.world?.visualVehicle?.parts?.chassis?.position?.y,
+            this.game.physicalVehicle?.position?.y,
+            this.game.player?.position?.y,
+        ]
+
+        for(const y of candidates)
+        {
+            // Settled on track only — ignore air / water / underground
+            if(typeof y === 'number' && Number.isFinite(y) && y >= 0.92 && y <= 1.45)
+                return y
+        }
+
+        return resting
+    }
+
+    placeFromS(s, lane = 0, out = this._pos)
     {
         const sample = this.line.sample(s)
-        out.copy(sample.position)
-        out.y = this.circuit.startPosition?.position?.y ?? NPC_CHASSIS_Y
+        out.x = sample.position.x
+        out.z = sample.position.z
+        out.y = this.chassisWorldY()
+
+        // Lateral offset in XZ (perpendicular to tangent)
+        if(Math.abs(lane) > 1e-4)
+        {
+            const tx = sample.tangent.x
+            const tz = sample.tangent.z
+            const nx = -tz
+            const nz = tx
+            const clamped = THREE.MathUtils.clamp(lane, -LANE_HALF, LANE_HALF)
+            out.x += nx * clamped
+            out.z += nz * clamped
+        }
+
         return sample
     }
 
@@ -433,7 +519,10 @@ export class RaceOpponents
         this.playerPlace = 1
 
         const start = this.circuit.startPosition
-        const proj = this.line.project(start.position.x, start.position.z)
+        // Prefer player-recorded start (world) — same point F3 dumps begin at
+        const startX = start?.position?.x ?? this.line.points[0].x
+        const startZ = start?.position?.z ?? this.line.points[0].z
+        const proj = this.line.project(startX, startZ)
         const pos = new THREE.Vector3()
 
         for(const rival of this.rivals)
@@ -443,9 +532,12 @@ export class RaceOpponents
             rival.steer = 0
             rival.finished = false
             rival.finishTime = null
+            rival.lane = rival.profile.lane
+            rival.laneSmoothed = rival.profile.lane
+            // Behind start on YOUR recorded line, side-by-side lanes
             rival.s = this.line.wrap(proj.s - rival.gridOffset)
 
-            const sample = this.placeFromS(rival.s, pos)
+            const sample = this.placeFromS(rival.s, rival.laneSmoothed, pos)
             rival.yaw = NpcRaceCar.yawFromDirection(sample.tangent.x, sample.tangent.z)
             rival.visual.updateVisual(pos, rival.yaw, 0, 0, 1)
         }
@@ -475,7 +567,7 @@ export class RaceOpponents
         const gate = this.getTargetCheckpoint(rival)
         if(gate)
         {
-            this.placeFromS(rival.s, pos)
+            this.placeFromS(rival.s, rival.laneSmoothed, pos)
             const hits = segmentCircleIntersection(
                 gate.a.x, gate.a.y,
                 gate.b.x, gate.b.y,
@@ -496,14 +588,26 @@ export class RaceOpponents
 
         if(rival.finished)
         {
-            this.placeFromS(rival.s, pos)
+            this.placeFromS(rival.s, rival.laneSmoothed, pos)
             rival.visual.updateVisual(pos, rival.yaw, 0, 0, dt)
             return
         }
 
-        const bend = this.line.aheadCurvature(rival.s, 18)
+        // Live obstacles → brake + dodge off the recorded line when crates sit on it
+        const obs = this.nearestObstacleAhead(rival.s)
+        const dodge = obs
+            ? dodgeOffsetForObstacle({ ahead: obs.ahead, lateral: obs.lateral })
+            : 0
+        const desiredLane = THREE.MathUtils.clamp(
+            rival.profile.lane + dodge,
+            -LANE_HALF,
+            LANE_HALF
+        )
+        rival.laneSmoothed += (desiredLane - rival.laneSmoothed) * Math.min(1, dt * 4)
+
+        const bend = this.line.aheadCurvature(rival.s, 22)
         const nowT = this.line.sample(rival.s).tangent
-        const lookT = this.line.sample(rival.s + 10).tangent
+        const lookT = this.line.sample(rival.s + 12).tangent
         const turnAhead = Math.abs(smallestAngle(
             NpcRaceCar.yawFromDirection(nowT.x, nowT.z),
             NpcRaceCar.yawFromDirection(lookT.x, lookT.z)
@@ -521,10 +625,11 @@ export class RaceOpponents
             maxSpeed: rival.maxSpeed,
         })
 
-        if(rival.speed < targetSpeed)
-            rival.speed = Math.min(targetSpeed, rival.speed + rival.accel * dt)
-        else
-            rival.speed = Math.max(targetSpeed, rival.speed - rival.brake * dt)
+        // Smooth accel — never snap to max in one frame
+        const accel = rival.speed < targetSpeed ? rival.accel : rival.brake
+        const maxDelta = accel * dt
+        rival.speed += THREE.MathUtils.clamp(targetSpeed - rival.speed, -maxDelta, maxDelta)
+        rival.speed = THREE.MathUtils.clamp(rival.speed, 0, rival.maxSpeed)
 
         const step = Math.min(rival.speed * dt, rival.maxSpeed * dt)
         rival.s = advanceArc(rival.s, step, this.line.total)
@@ -532,7 +637,7 @@ export class RaceOpponents
         if(step > 0.001 && forwardDelta(sBefore, rival.s, this.line.total) === 0)
             rival.s = advanceArc(sBefore, Math.max(step, 0.02), this.line.total)
 
-        const sample = this.placeFromS(rival.s, pos)
+        const sample = this.placeFromS(rival.s, rival.laneSmoothed, pos)
         const desiredYaw = NpcRaceCar.yawFromDirection(sample.tangent.x, sample.tangent.z)
         rival.yaw += smallestAngle(rival.yaw, desiredYaw) * Math.min(1, dt * 8)
         rival.steer = THREE.MathUtils.clamp(smallestAngle(rival.yaw, desiredYaw), -0.4, 0.4)

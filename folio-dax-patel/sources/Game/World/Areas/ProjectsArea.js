@@ -8,6 +8,7 @@ import { add, color, float, Fn, If, luminance, mix, mul, normalWorld, positionGe
 import { Inputs } from '../../Inputs/Inputs.js'
 import { MeshDefaultMaterial } from '../../Materials/MeshDefaultMaterial.js'
 import { Area } from './Area.js'
+import { ProjectsLounge } from '../Dressing/ProjectsLounge.js'
 
 export class ProjectsArea extends Area
 {
@@ -53,6 +54,7 @@ export class ProjectsArea extends Area
         this.setGrinder()
         this.setAnvil()
         this.setAchievement()
+        this.setDressing()
 
         this.changeProject(0, ProjectsArea.DIRECTION_NEXT, false, true)
 
@@ -1293,6 +1295,18 @@ export class ProjectsArea extends Area
         })
     }
 
+    setDressing()
+    {
+        try
+        {
+            this.lounge = new ProjectsLounge(this)
+        }
+        catch(error)
+        {
+            console.error('[ProjectsArea] lounge failed', error)
+        }
+    }
+
     open()
     {
         if(this.state === ProjectsArea.STATE_OPEN || this.state === ProjectsArea.STATE_OPENING)
@@ -1551,5 +1565,7 @@ export class ProjectsArea extends Area
             this.sounds.anvil.play()
 
         this.anvil.loopTime = loopTime
+
+        this.lounge?.update(this.game.ticker.elapsed)
     }
 }

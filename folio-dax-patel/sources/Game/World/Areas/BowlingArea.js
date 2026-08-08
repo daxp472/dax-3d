@@ -6,6 +6,8 @@ import gsap from 'gsap'
 import { color, float, Fn, instancedBufferAttribute, instanceIndex, max, min, mix, positionGeometry, sin, step, texture, uniform, uv, vec2, vec3, vec4 } from 'three/tsl'
 import { InstancedGroup } from '../../InstancedGroup.js'
 import { Area } from './Area.js'
+import { BowlingLounge } from '../Dressing/BowlingLounge.js'
+import { BowlingBeach } from '../Dressing/BowlingBeach.js'
 
 export class BowlingArea extends Area
 {
@@ -32,6 +34,20 @@ export class BowlingArea extends Area
         this.setBumpers()
         this.setJukebox()
         this.setAchievement()
+        this.setDressing()
+    }
+
+    setDressing()
+    {
+        try
+        {
+            this.lounge = new BowlingLounge(this)
+            this.beach = new BowlingBeach()
+        }
+        catch(error)
+        {
+            console.error('[BowlingArea] dressing failed', error)
+        }
     }
 
     setSounds()
@@ -641,5 +657,8 @@ export class BowlingArea extends Area
         if(showRestartInteractivePoint && this.restartInteractivePoint.state === InteractivePoints.STATE_HIDDEN)
             this.restartInteractivePoint.show()
 
+        const elapsed = this.game.ticker.elapsed
+        this.lounge?.update(elapsed)
+        this.beach?.update(elapsed)
     }
 }

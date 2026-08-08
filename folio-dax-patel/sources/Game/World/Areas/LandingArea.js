@@ -8,6 +8,7 @@ import { MeshDefaultMaterial } from '../../Materials/MeshDefaultMaterial.js'
 import { NameLetters } from '../NameLetters.js'
 import { LetterBuilder } from '../LetterBuilder.js'
 import { GuestbookBoard } from '../GuestbookBoard.js'
+import { GamerCornerDressing } from '../Dressing/GamerCornerDressing.js'
 
 export class LandingArea extends Area
 {
@@ -23,6 +24,24 @@ export class LandingArea extends Area
         this.setControls()
         this.setBonfire()
         this.setAchievement()
+        this.setGamerCorner()
+    }
+
+    setGamerCorner()
+    {
+        try
+        {
+            // Giant gamepad ≈ (57.5, 32.3), controls pin ≈ (53.8, 32.5)
+            const controlsRef = this.references.items.get('controlsInteractivePoint')?.[0]
+            const anchor = (controlsRef?.position?.clone() || new THREE.Vector3(57.5, 0, 32.3))
+                .add(new THREE.Vector3(2.2, 0, 1.5))
+            anchor.y = 0
+            this.gamerCorner = new GamerCornerDressing(anchor)
+        }
+        catch(error)
+        {
+            console.error('[LandingArea] gamer corner failed', error)
+        }
     }
 
     setLetters()
@@ -352,5 +371,6 @@ export class LandingArea extends Area
     update()
     {
         this.localTime.value += this.game.ticker.deltaScaled * 0.1
+        this.gamerCorner?.update(this.game.ticker.elapsed)
     }
 }
