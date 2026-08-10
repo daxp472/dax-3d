@@ -31,6 +31,7 @@ export class ProjectsLounge
             drink: 'coffee',
             outfit: 'cocoa',
             phase: 0.6,
+            pose: 'stool',
         })
         this.addPatron({
             name: 'projFriend',
@@ -39,6 +40,7 @@ export class ProjectsLounge
             drink: 'chai',
             outfit: 'pearl',
             phase: 2.2,
+            pose: 'stool',
         })
 
         // Desk clutter — sticky shipping notes

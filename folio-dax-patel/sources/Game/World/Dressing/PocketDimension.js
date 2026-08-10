@@ -3,6 +3,8 @@ import { color } from 'three/tsl'
 import { Game } from '../../Game.js'
 import { InteractivePoints } from '../../InteractivePoints.js'
 import { MeshDefaultMaterial } from '../../Materials/MeshDefaultMaterial.js'
+import { VoxelPatron } from './VoxelPatron.js'
+import { makeDockPlank, makeDuck, makeSheep } from './ToyCritters.js'
 
 /**
  * The Soft Stack — candy WIP pocket (Folio toy DNA).
@@ -28,12 +30,16 @@ export class PocketDimension
         this.knockables = []
         this.floaters = []
         this.spinners = []
+        this.patrons = []
         this._savedFloorVisible = true
         this._savedWaterVisible = true
 
         this.buildShell()
         this.buildSpawnPlaza()
+        this.buildPasture()
+        this.buildPatrons()
         this.buildDuckShrine()
+        this.buildCandyGrove()
         this.buildModuleArcade()
         this.buildSoftPillars()
         this.buildStickyYard()
@@ -69,36 +75,153 @@ export class PocketDimension
 
         const floor = new THREE.Mesh(
             new THREE.BoxGeometry(50, 0.8, 50),
-            this.mat('#fff6e8')
+            this.mat('#fff8ef')
         )
         floor.position.set(0, -0.35, 0)
         this.group.add(floor)
 
+        // Pastel candy tiles — readable grid, not muddy dark shell
         const checkers = [
-            [8, 8, '#7ec8ff'], [-8, 8, '#ff8fab'], [8, -8, '#ff8fab'], [-8, -8, '#7ec8ff'],
-            [14, 0, '#7ec8ff'], [-14, 0, '#ff8fab'], [0, 10, '#7ec8ff'], [0, -10, '#ff8fab'],
+            [8, 8, '#b8e0ff'], [-8, 8, '#ffc4d6'], [8, -8, '#ffc4d6'], [-8, -8, '#b8e0ff'],
+            [14, 0, '#ffe8a3'], [-14, 0, '#c8f7dc'], [0, 10, '#b8e0ff'], [0, -10, '#ffc4d6'],
+            [0, 0, '#fff0c8'], [6, 6, '#ffd6a5'], [-6, -6, '#ffd6a5'], [6, -6, '#c8f7dc'], [-6, 6, '#c8f7dc'],
         ]
         for(const [x, z, hex] of checkers)
         {
-            const tile = new THREE.Mesh(new THREE.BoxGeometry(2, 0.06, 2), this.mat(hex))
+            const tile = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.06, 2.2), this.mat(hex))
             tile.position.set(x, 0.05, z)
             this.group.add(tile)
         }
 
         const wall = new THREE.Mesh(
-            new THREE.CylinderGeometry(R, R, H, 40, 1, true),
-            this.mat('#0a1218')
+            new THREE.CylinderGeometry(R, R * 1.02, H, 40, 1, true),
+            this.mat('#ffe8d6', { hasFog: false })
         )
         wall.position.y = H * 0.5 - 0.3
         this.group.add(wall)
 
+        const wallTrim = new THREE.Mesh(
+            new THREE.TorusGeometry(R * 0.99, 0.35, 8, 40),
+            this.mat('#ff9f1c')
+        )
+        wallTrim.rotation.x = Math.PI / 2
+        wallTrim.position.y = 0.15
+        this.group.add(wallTrim)
+
         const ceil = new THREE.Mesh(
             new THREE.SphereGeometry(R * 0.98, 28, 14, 0, Math.PI * 2, 0, Math.PI * 0.52),
-            this.mat('#0a1218')
+            this.mat('#fff0d6')
         )
         ceil.position.y = 1.5
         ceil.rotation.x = Math.PI
         this.group.add(ceil)
+
+        // Soft cloud puffs under dome
+        for(let i = 0; i < 8; i++)
+        {
+            const a = (i / 8) * Math.PI * 2
+            const cloud = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 6), this.mat('#ffffff', { hasFog: false }))
+            cloud.scale.set(1.6, 0.5, 0.9)
+            cloud.position.set(Math.cos(a) * 16, 9.5, Math.sin(a) * 16)
+            this.group.add(cloud)
+            this.floaters.push({ mesh: cloud, baseY: 9.5, phase: i * 0.8, amp: 0.15 })
+        }
+    }
+
+    buildPasture()
+    {
+        const pasture = new THREE.Mesh(
+            new THREE.CylinderGeometry(7, 7.2, 0.08, 24),
+            this.mat('#c8f7dc')
+        )
+        pasture.position.set(-10, 0.06, 8)
+        this.group.add(pasture)
+
+        const logBench = makeDockPlank(-10, 10, 0.8, 2.8)
+        logBench.position.y = 0
+        this.group.add(logBench)
+        this.addFixedBody(this.w(-10, 0.25, 10), [ 1.4, 0.15, 0.55 ])
+
+        const sheepSpots = [
+            { x: -12, z: 7, yaw: 0.5, scale: 1.1 },
+            { x: -8, z: 6, yaw: -0.7, scale: 0.95 },
+            { x: -11, z: 9.5, yaw: 1.2, scale: 1.0 },
+            { x: -7, z: 8.5, yaw: -0.2, scale: 0.88 },
+        ]
+        for(const s of sheepSpots)
+        {
+            const sheep = makeSheep({
+                position: { x: s.x, y: 0, z: s.z },
+                yaw: s.yaw,
+                scale: s.scale,
+                wool: '#ffffff',
+            })
+            this.group.add(sheep)
+            this.addFixedBody(this.w(s.x, 0.35, s.z), [ 0.45, 0.35, 0.45 ])
+        }
+
+        const pond = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.9, 0.06, 20), this.mat('#7ec8ff'))
+        pond.position.set(6, 0.04, 10)
+        this.group.add(pond)
+
+        for(const [dx, dz] of [ [5.2, 10.5], [6.8, 9.6], [7.1, 10.8] ])
+        {
+            const duck = makeDuck({ position: { x: dx, y: 0.08, z: dz }, yaw: Math.random() * 2 })
+            this.group.add(duck)
+            this.floaters.push({
+                mesh: duck,
+                baseX: dx,
+                baseY: 0.08,
+                baseZ: dz,
+                phase: dx,
+                amp: 0.03,
+                drift: 0.08,
+            })
+        }
+    }
+
+    buildPatrons()
+    {
+        const spots = [
+            { name: 'stackDevA', x: -2, z: 12, yaw: 2.8, outfit: 'indigo', drink: 'coffee', phase: 0.2, pose: 'standing' },
+            { name: 'stackDevB', x: 3, z: 11, yaw: -2.4, outfit: 'rose', drink: 'chai', phase: 1.1, pose: 'standing' },
+            { name: 'stackQA', x: -14, z: 2, yaw: 0.6, outfit: 'mango', drink: 'coffee', phase: 2.3, pose: 'standing' },
+            { name: 'stackShip', x: 8, z: -8, yaw: -1.0, outfit: 'teal', drink: 'chai', phase: 0.7, pose: 'standing' },
+        ]
+        for(const s of spots)
+        {
+            const patron = new VoxelPatron({
+                name: s.name,
+                position: { x: s.x, y: 0.72, z: s.z },
+                yaw: s.yaw,
+                outfit: s.outfit,
+                drink: s.drink,
+                phase: s.phase,
+                pose: s.pose,
+            })
+            this.patrons.push(patron)
+            this.group.add(patron.group)
+        }
+    }
+
+    buildCandyGrove()
+    {
+        const trees = [
+            { x: 18, z: 6, trunk: '#ff9f1c', canopy: '#ff6b35' },
+            { x: -18, z: -6, trunk: '#2ec4b6', canopy: '#7ec8ff' },
+            { x: 18, z: -10, trunk: '#ff8fab', canopy: '#ffe066' },
+            { x: -20, z: 14, trunk: '#7b5cff', canopy: '#ffc4d6' },
+        ]
+        for(const t of trees)
+        {
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 2.2, 8), this.mat(t.trunk))
+            trunk.position.set(t.x, 1.1, t.z)
+            const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.4, 10, 8), this.mat(t.canopy))
+            canopy.position.set(t.x, 2.8, t.z)
+            this.group.add(trunk, canopy)
+            this.addFixedBody(this.w(t.x, 1.1, t.z), [ 0.4, 1.1, 0.4 ])
+            this.spinners.push({ mesh: canopy, speed: 0.12, axis: 'y' })
+        }
     }
 
     buildSpawnPlaza()
@@ -130,30 +253,40 @@ export class PocketDimension
 
     buildDuckShrine()
     {
-        const body = new THREE.Mesh(new THREE.SphereGeometry(1.4, 12, 10), this.mat('#ffe566'))
-        body.position.set(0, 1.4, 0)
-        const beak = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.45, 0.7), this.mat('#ff9f1c'))
-        beak.position.set(0, 1.5, 1.5)
-        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), this.mat('#1a1a1a'))
-        eyeL.position.set(-0.45, 1.9, 0.9)
-        const eyeR = eyeL.clone()
-        eyeR.position.x = 0.45
-        this.group.add(body, beak, eyeL, eyeR)
-        this.addFixedBody(this.w(0, 1.4, 0), [ 1.3, 1.3, 1.3 ])
+        const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.6, 0.5, 12), this.mat('#ff9f1c'))
+        pedestal.position.set(0, 0.25, 0)
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.12, 8, 24), this.mat('#7ec8ff'))
+        ring.rotation.x = Math.PI / 2
+        ring.position.set(0, 0.55, 0)
+        this.group.add(pedestal, ring)
+        this.addFixedBody(this.w(0, 0.25, 0), [ 2.2, 0.25, 2.2 ])
 
-        const bitColors = [ '#7ec8ff', '#ff8fab', '#2ec4b6', '#7ec8ff', '#ff8fab', '#2ec4b6' ]
-        for(let i = 0; i < 6; i++)
+        const body = new THREE.Mesh(new THREE.SphereGeometry(1.5, 12, 10), this.mat('#ffe566'))
+        body.position.set(0, 1.55, 0)
+        const beak = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.48, 0.75), this.mat('#ff6b35'))
+        beak.position.set(0, 1.65, 1.55)
+        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), this.mat('#1a1a1a'))
+        eyeL.position.set(-0.48, 2.05, 0.95)
+        const eyeR = eyeL.clone()
+        eyeR.position.x = 0.48
+        const bow = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.15), this.mat('#ff8fab'))
+        bow.position.set(0, 2.35, 1.1)
+        this.group.add(body, beak, eyeL, eyeR, bow)
+        this.addFixedBody(this.w(0, 1.55, 0), [ 1.4, 1.4, 1.4 ])
+
+        const bitColors = [ '#7ec8ff', '#ff8fab', '#2ec4b6', '#ffe066', '#ff6b35', '#c8f7dc', '#7b5cff', '#ffd6a5' ]
+        for(let i = 0; i < 8; i++)
         {
-            const bit = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), this.mat(bitColors[i]))
-            const a = (i / 6) * Math.PI * 2
-            bit.position.set(Math.cos(a) * 4, 2.5 + (i % 3) * 0.6, Math.sin(a) * 4)
+            const bit = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), this.mat(bitColors[i]))
+            const a = (i / 8) * Math.PI * 2
+            bit.position.set(Math.cos(a) * 4.2, 2.6 + (i % 3) * 0.5, Math.sin(a) * 4.2)
             this.group.add(bit)
             this.floaters.push({
                 mesh: bit,
                 baseY: bit.position.y,
                 phase: i,
-                amp: 0.25,
-                orbit: { radius: 4, speed: 0.4 + i * 0.05, angle: a },
+                amp: 0.28,
+                orbit: { radius: 4.2, speed: 0.35 + i * 0.04, angle: a },
             })
         }
     }
@@ -502,7 +635,22 @@ export class PocketDimension
                 f.mesh.position.x = Math.cos(f.orbit.angle) * f.orbit.radius
                 f.mesh.position.z = Math.sin(f.orbit.angle) * f.orbit.radius
             }
+            else if(f.baseX != null)
+            {
+                f.mesh.position.x = f.baseX + Math.sin(elapsed * 0.7 + f.phase) * (f.drift ?? 0.1)
+                f.mesh.position.z = f.baseZ + Math.cos(elapsed * 0.6 + f.phase) * (f.drift ?? 0.1) * 0.7
+            }
             f.mesh.position.y = f.baseY + Math.sin(elapsed * 1.8 + f.phase) * f.amp
+        }
+        for(const p of this.patrons)
+        {
+            let lookPos = null
+            if(this.game.player?.position)
+            {
+                lookPos = this.game.player.position.clone()
+                lookPos.sub(PocketDimension.ORIGIN)
+            }
+            p.update(elapsed, lookPos)
         }
         for(const s of this.spinners)
         {

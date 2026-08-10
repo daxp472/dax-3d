@@ -27,6 +27,7 @@ export class SocialPlaza
             drink: 'coffee',
             outfit: 'cocoa',
             phase: 0.5,
+            pose: 'standing',
         })
         this.addPatron({
             name: 'socialFanB',
@@ -35,6 +36,7 @@ export class SocialPlaza
             drink: 'chai',
             outfit: 'sand',
             phase: 2.0,
+            pose: 'standing',
         })
 
         // Between youtube (30.9,-24.2) and onlyfans (39.6,-33.2) — west of OF
@@ -45,6 +47,7 @@ export class SocialPlaza
             drink: 'coffee',
             outfit: 'olive',
             phase: 1.4,
+            pose: 'standing',
         })
 
         // Gap east of bluesky (33,-21) / west of x (33.8,-18)
@@ -54,13 +57,6 @@ export class SocialPlaza
         this.buildStickerCrate(34.8, -27.6)
         this.buildNeonPillar(28.8, -20.6)
         this.buildNeonPillar(35.6, -24.8)
-
-        // Collision for patrons (fixed so car bumps them)
-        for(const p of this.patrons)
-        {
-            const pos = p.group.position
-            this.addFixedCollider(pos.x, 0.55, pos.z, [ 0.35, 0.55, 0.35 ])
-        }
 
         this.group.traverse((c) =>
         {

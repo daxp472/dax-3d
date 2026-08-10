@@ -139,6 +139,7 @@ export class GamerCornerDressing
             drink: 'coffee',
             outfit: 'sand',
             phase: 2.1,
+            pose: 'stool',
         })
         this.group.add(patron.group)
         this.patrons.push(patron)

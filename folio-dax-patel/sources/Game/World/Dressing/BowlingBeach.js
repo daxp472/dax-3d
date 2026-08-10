@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu'
 import { Game } from '../../Game.js'
 import { InteractivePoints } from '../../InteractivePoints.js'
-import { vibeMat } from './VoxelPatron.js'
+import { vibeMat, VoxelPatron } from './VoxelPatron.js'
 
 /**
  * Beach club at player-recorded shore point (−27.4, 74.3).
@@ -19,6 +19,7 @@ export class BowlingBeach
         this.game.scene.add(this.group)
 
         this.floaters = []
+        this.patrons = []
         const O = BowlingBeach.ORIGIN
 
         this.buildSandPad(O.x, O.z)
@@ -27,6 +28,8 @@ export class BowlingBeach
         this.buildUmbrella({ x: O.x + 2.1, z: O.z + 0.4, yaw: -0.55, canopy: '#7b5cff', pole: '#f4f0e6' })
         this.buildLounger({ x: O.x - 1.2, z: O.z + 1.8, yaw: 0.4 })
         this.buildLounger({ x: O.x + 1.0, z: O.z + 1.5, yaw: -0.5 })
+        this.addLoungerPatron({ x: O.x - 1.2, z: O.z + 1.8, yaw: 0.4, outfit: 'rose', phase: 0.8 })
+        this.addLoungerPatron({ x: O.x + 1.0, z: O.z + 1.5, yaw: -0.5, outfit: 'indigo', phase: 1.6, drink: 'coffee' })
         this.buildChaiCooler({ x: O.x, z: O.z + 0.9 })
         this.buildTowel({ x: O.x - 3.2, z: O.z + 2.0, yaw: 0.25 })
         this.buildSurfboard({ x: O.x + 3.4, z: O.z + 0.6, yaw: 1.05 })
@@ -145,6 +148,21 @@ export class BowlingBeach
         back.rotation.x = -0.45
         g.add(base, seat, back)
         this.group.add(g)
+    }
+
+    addLoungerPatron({ x, z, yaw, outfit, phase, drink = 'chai' })
+    {
+        const patron = new VoxelPatron({
+            name: 'beachLounger',
+            position: { x, y: 0.32, z },
+            yaw,
+            outfit,
+            phase,
+            drink,
+            pose: 'lounger',
+        })
+        this.patrons.push(patron)
+        this.group.add(patron.group)
     }
 
     buildChaiCooler({ x, z })
@@ -319,5 +337,8 @@ export class BowlingBeach
         }
         if(this.sign)
             this.sign.rotation.y = Math.sin(elapsed * 0.5) * 0.05
+        const playerPos = this.game.player?.position ?? null
+        for(const p of this.patrons)
+            p.update(elapsed, playerPos)
     }
 }

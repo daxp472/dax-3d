@@ -46,6 +46,7 @@ export class AltarApproach
             drink: 'chai',
             outfit: 'pearl',
             phase: 1.2,
+            pose: 'standing',
         })
 
         // Shrine fragment east shoulder (before pit)
@@ -78,11 +79,6 @@ export class AltarApproach
         {
             this.addFixedCollider(72.6, 0.75, z, [ 0.12, 0.75, 0.12 ])
             this.addFixedCollider(78.0, 0.75, z, [ 0.12, 0.75, 0.12 ])
-        }
-        for(const p of this.patrons)
-        {
-            const pos = p.group.position
-            this.addFixedCollider(pos.x, 0.55, pos.z, [ 0.35, 0.55, 0.35 ])
         }
 
         this.group.traverse((c) =>

@@ -45,6 +45,7 @@ export class BowlingLounge
             drink: 'chai',
             outfit: 'cocoa',
             phase: 0.4,
+            pose: 'booth',
         })
         this.addPatron({
             name: 'boothCoffee',
@@ -53,6 +54,7 @@ export class BowlingLounge
             drink: 'coffee',
             outfit: 'sand',
             phase: 1.7,
+            pose: 'booth',
         })
 
         // Table 2 — one chill regular
@@ -63,6 +65,7 @@ export class BowlingLounge
             drink: 'chai',
             outfit: 'olive',
             phase: 2.9,
+            pose: 'booth',
         })
     }
 
@@ -77,6 +80,7 @@ export class BowlingLounge
             drink: 'coffee',
             outfit: 'pearl',
             phase: 0.9,
+            pose: 'stool',
         })
         this.addPatron({
             name: 'stoolFriend',
@@ -85,6 +89,7 @@ export class BowlingLounge
             drink: 'chai',
             outfit: 'mango',
             phase: 3.4,
+            pose: 'stool',
         })
     }
 
