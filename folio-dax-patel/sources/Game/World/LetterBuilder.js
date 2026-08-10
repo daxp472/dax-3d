@@ -1073,7 +1073,7 @@ export class LetterBuilder
         const ease = t * t * (3 - 2 * t)
 
         // Settle onto the seat
-        const sitY = this.groundY + 0.22
+        const sitY = this.groundY + 0.455
         this.footingY = THREE.MathUtils.lerp(this.groundY, sitY, ease)
         this.group.position.y = this.footingY
 
