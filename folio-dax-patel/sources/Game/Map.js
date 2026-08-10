@@ -43,8 +43,11 @@ export class Map
         this.locations.items = [
             { name: 'Achievements', respawnName: 'achievements', offset: { x: 0, y: -0.01 } },
             { name: 'Altar', respawnName: 'altar', offset: { x: 0, y: -0.05 } },
+            { name: 'Soft<br />Stack', respawnName: 'softStack', offset: { x: 0.02, y: -0.03 } },
             { name: 'Behind<br /> the scene', respawnName: 'behindTheScene', offset: { x: 0.01, y: 0 } },
             { name: 'Bowling', respawnName: 'bowling', offset: { x: -0.08, y: 0.03 } },
+            { name: 'Beach<br />Club', respawnName: 'beachClub', offset: { x: 0.02, y: 0.04 } },
+            { name: 'River<br />Bank', respawnName: 'riverBank', offset: { x: -0.01, y: -0.02 } },
             { name: 'Career', respawnName: 'career', offset: { x: 0, y: -0.06 } },
             { name: 'Circuit', respawnName: 'circuit', offset: { x: -0.08, y: -0.05 } },
             { name: 'Cookie', respawnName: 'cookie', offset: { x: -0.02, y: -0.01 } },

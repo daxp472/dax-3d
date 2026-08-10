@@ -35,6 +35,21 @@ export class Respawns
 
             this.items.set(name, item)
         }
+
+        // Dressing-only pins (no GLB respawn empty)
+        const extras = [
+            { name: 'riverBank', x: -48, z: 81, rotation: 0.9 },
+            { name: 'beachClub', x: -27.398, z: 74.268, rotation: 0.4 },
+            { name: 'softStack', x: 75.34, z: -27.95, rotation: 1.12 },
+        ]
+        for(const e of extras)
+        {
+            this.items.set(e.name, {
+                name: e.name,
+                position: new THREE.Vector3(e.x, 4, e.z),
+                rotation: e.rotation,
+            })
+        }
     }
 
     getByName(name)
