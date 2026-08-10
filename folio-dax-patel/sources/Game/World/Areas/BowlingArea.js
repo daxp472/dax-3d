@@ -8,6 +8,7 @@ import { InstancedGroup } from '../../InstancedGroup.js'
 import { Area } from './Area.js'
 import { BowlingLounge } from '../Dressing/BowlingLounge.js'
 import { BowlingBeach } from '../Dressing/BowlingBeach.js'
+import { RiverShore } from '../Dressing/RiverShore.js'
 
 export class BowlingArea extends Area
 {
@@ -43,6 +44,7 @@ export class BowlingArea extends Area
         {
             this.lounge = new BowlingLounge(this)
             this.beach = new BowlingBeach()
+            this.riverShore = new RiverShore()
         }
         catch(error)
         {
@@ -660,5 +662,6 @@ export class BowlingArea extends Area
         const elapsed = this.game.ticker.elapsed
         this.lounge?.update(elapsed)
         this.beach?.update(elapsed)
+        this.riverShore?.update(elapsed)
     }
 }
