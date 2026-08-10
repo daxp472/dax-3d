@@ -9,6 +9,7 @@ export class Options
 
         this.setSound()
         this.setQuality()
+        this.setPortfolioLink()
         this.setRespawn()
         this.setReset()
         this.setRenderer()
@@ -36,6 +37,18 @@ export class Options
         this.game.quality.events.on('change', () =>
         {
             text.textContent = this.game.quality.level === 0 ? 'High' : 'Low'
+        })
+    }
+
+    setPortfolioLink()
+    {
+        const element = this.element.querySelector('.js-portfolio-link')
+        if(!element)
+            return
+
+        element.addEventListener('click', () =>
+        {
+            window.open('https://samirsir-portfolio.vercel.app', '_blank', 'noopener,noreferrer')
         })
     }
 
