@@ -1,0 +1,35 @@
+.portfolio-fallback
+    position fixed
+    left 50%
+    bottom 1.6rem
+    transform translateX(-50%)
+    z-index 12
+    display flex
+    flex-direction column
+    align-items center
+    gap 0.55rem
+    padding 0.75rem 1.1rem
+    border-radius 0.65rem
+    background rgba(12, 16, 24, 0.82)
+    border 1px solid rgba(255, 255, 255, 0.12)
+    backdrop-filter blur(8px)
+    pointer-events auto
+
+    &[hidden]
+        display none !important
+
+.portfolio-fallback-text
+    margin 0
+    font-family Nunito, sans-serif
+    font-size 0.82rem
+    font-weight 700
+    color rgba(255, 255, 255, 0.88)
+    text-align center
+
+.portfolio-fallback-link
+    font-size 0.78rem
+    white-space nowrap
+
+    html.input-filter-intro &
+        pointer-events none
+        opacity 0.35
