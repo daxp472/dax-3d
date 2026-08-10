@@ -1,10 +1,12 @@
 import { Events } from './Events.js'
+import { Game } from './Game.js'
 
 export class Viewport
 {
     constructor(domElement)
     {
         this.domElement = domElement
+        this.game = Game.getInstance()
 
         this.events = new Events()
         
@@ -21,7 +23,8 @@ export class Viewport
         this.ratio = this.width / this.height
 
         this.pixelRatioPure = window.devicePixelRatio
-        this.pixelRatioMax = 2
+        const qualityMax = this.game?.quality?.pixelRatioMax
+        this.pixelRatioMax = typeof qualityMax === 'number' ? qualityMax : 2
         this.pixelRatio = Math.min(this.pixelRatioPure, this.pixelRatioMax)
     }
 

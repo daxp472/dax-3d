@@ -39,17 +39,21 @@ export class Rendering
     {
         this.renderer = new THREE.WebGPURenderer({
             canvas: this.game.canvasElement,
-            powerPreference: 'high-performance',
+            powerPreference: this.game.quality.preferLowPower ? 'low-power' : 'high-performance',
             forceWebGL: false,
-            antialias: this.game.viewport.pixelRatio < 2
+            antialias: this.game.viewport.pixelRatio < 2 && this.game.quality.level === 0
         })
         this.renderer.setSize(this.game.viewport.width, this.game.viewport.height)
         this.renderer.setPixelRatio(this.game.viewport.pixelRatio)
         this.renderer.sortObjects = false
 
         this.renderer.domElement.classList.add('experience')
-        this.renderer.shadowMap.enabled = true
+        this.renderer.shadowMap.enabled = this.game.quality.level === 0
         // this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+        this.game.quality.events.on('change', (level) =>
+        {
+            this.renderer.shadowMap.enabled = level === 0
+        })
         this.renderer.setOpaqueSort((a, b) =>
         {
             return a.renderOrder - b.renderOrder
@@ -91,11 +95,14 @@ export class Rendering
         {
             if(level === 0)
             {
+                this.bloomPass.strength.value = 0.25
                 this.postProcessing.outputNode = this.cheapDOFPass.add(this.bloomPass)
             }
             else if(level === 1)
             {
-                this.postProcessing.outputNode = scenePassColor.add(this.bloomPass)
+                // Low: skip bloom entirely on weak GPUs (big fill-rate saver)
+                this.bloomPass.strength.value = 0
+                this.postProcessing.outputNode = scenePassColor
             }
 
             this.postProcessing.needsUpdate = true

@@ -46,6 +46,7 @@ import { Menu } from './Menu.js'
 import { Title } from './Title.js'
 import { PreRenderer } from './PreRenderer.js'
 import { Options } from './Options.js'
+import { FpsMeter } from './FpsMeter.js'
 import gsap from 'gsap'
 import { Map } from './Map.js'
 import { NPCs } from './World/NPCs/NPCs.js'
@@ -110,6 +111,7 @@ export class Game
 
         ])
         this.options = new Options()
+        this.fpsMeter = new FpsMeter()
         this.respawns = new Respawns(import.meta.env.VITE_PLAYER_SPAWN || 'landing')
         this.view = new View()
         this.rendering.setPostprocessing()

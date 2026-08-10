@@ -9,7 +9,7 @@ export class Grass
     {
         this.game = Game.getInstance()
 
-        this.subdivisions = 280
+        this.subdivisions = this.game.quality?.grassSubdivisions ?? 280
         const halfExtent = this.game.view.optimalArea.radius
         this.size = halfExtent * 2
         this.count = this.subdivisions * this.subdivisions
