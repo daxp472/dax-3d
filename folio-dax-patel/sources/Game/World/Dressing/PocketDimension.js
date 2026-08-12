@@ -3,25 +3,35 @@ import { color } from 'three/tsl'
 import { Game } from '../../Game.js'
 import { InteractivePoints } from '../../InteractivePoints.js'
 import { MeshDefaultMaterial } from '../../Materials/MeshDefaultMaterial.js'
-import { VoxelPatron } from './VoxelPatron.js'
-import { makeDockPlank, makeDuck, makeSheep } from './ToyCritters.js'
+import {
+    hellMat,
+    makeAshField,
+    makeBonePile,
+    makeDragScene,
+    makeFloatingLava,
+    makeHellDragon,
+    makeHellGate,
+    makeLavaPool,
+    makeThroneOfHell,
+    makeTorturePillar,
+} from './HellProps.js'
 
 /**
- * The Soft Stack — candy WIP pocket (Folio toy DNA).
- * Design: sealed cream playground at (420,0,420) — not doom hell.
+ * Inferno pocket — lava, demons, dragon, throne of the King of Hell.
+ * Sealed arena at (420, 0, 420). Ground Y = 0; camera focus Y stays 0 in parent space.
  */
 export class PocketDimension
 {
     static ORIGIN = new THREE.Vector3(420, 0, 420)
     static HALF = 24
-    static TITLE = 'The Soft Stack'
+    static TITLE = 'Inferno'
 
     constructor()
     {
         this.game = Game.getInstance()
         this.active = false
         this.group = new THREE.Group()
-        this.group.name = 'softStack'
+        this.group.name = 'hellDimension'
         this.group.visible = false
         this.group.position.copy(PocketDimension.ORIGIN)
         this.game.scene.add(this.group)
@@ -29,24 +39,35 @@ export class PocketDimension
         this.physicsBodies = []
         this.knockables = []
         this.floaters = []
-        this.spinners = []
-        this.patrons = []
+        this.lavaMeshes = []
+        this.dragScenes = []
+        this.torturePosts = []
+        this.ashField = null
+        this.dragon = null
+        this.throne = null
         this._savedFloorVisible = true
         this._savedWaterVisible = true
 
         this.buildShell()
-        this.buildSpawnPlaza()
-        this.buildPasture()
-        this.buildPatrons()
-        this.buildDuckShrine()
-        this.buildCandyGrove()
-        this.buildModuleArcade()
-        this.buildSoftPillars()
-        this.buildStickyYard()
-        this.buildLooseBits()
-        this.buildShipGate()
+        this.buildLavaRivers()
+        this.buildAshAndEmbers()
+        this.buildThroneCourt()
+        this.buildTortureRing()
+        this.buildDragParades()
+        this.buildDragon()
+        this.buildExitGate()
         this.buildPhysicsShell()
         this.setInteract()
+
+        this.group.traverse((c) =>
+        {
+            if(c.isMesh)
+            {
+                c.castShadow = true
+                c.receiveShadow = true
+                c.frustumCulled = false
+            }
+        })
     }
 
     mat(hex, opts = {})
@@ -55,7 +76,7 @@ export class PocketDimension
             colorNode: color(hex),
             hasWater: false,
             hasFog: opts.hasFog ?? false,
-            ...opts,
+            hasReveal: false,
         })
     }
 
@@ -71,375 +92,176 @@ export class PocketDimension
     buildShell()
     {
         const R = PocketDimension.HALF + 14
-        const H = 14
+        const H = 18
 
+        // Cracked obsidian floor
         const floor = new THREE.Mesh(
-            new THREE.BoxGeometry(50, 0.8, 50),
-            this.mat('#fff8ef')
+            new THREE.BoxGeometry(52, 0.9, 52),
+            hellMat('#1a0808')
         )
-        floor.position.set(0, -0.35, 0)
+        floor.position.set(0, -0.4, 0)
         this.group.add(floor)
 
-        // Pastel candy tiles — readable grid, not muddy dark shell
-        const checkers = [
-            [8, 8, '#b8e0ff'], [-8, 8, '#ffc4d6'], [8, -8, '#ffc4d6'], [-8, -8, '#b8e0ff'],
-            [14, 0, '#ffe8a3'], [-14, 0, '#c8f7dc'], [0, 10, '#b8e0ff'], [0, -10, '#ffc4d6'],
-            [0, 0, '#fff0c8'], [6, 6, '#ffd6a5'], [-6, -6, '#ffd6a5'], [6, -6, '#c8f7dc'], [-6, 6, '#c8f7dc'],
+        // Lava cracks in floor (flush decals)
+        const crackSpots = [
+            [0, 0, 4, 1.8], [-8, 6, 3, 1.2], [10, -5, 2.5, 1], [-12, -8, 3.5, 1.4],
+            [6, 12, 2, 0.9], [-5, -14, 2.8, 1.1], [14, 8, 2.2, 1],
         ]
-        for(const [x, z, hex] of checkers)
+        for(const [x, z, r] of crackSpots)
         {
-            const tile = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.06, 2.2), this.mat(hex))
-            tile.position.set(x, 0.05, z)
-            this.group.add(tile)
+            const crack = new THREE.Mesh(
+                new THREE.CylinderGeometry(r, r * 1.05, 0.04, 14),
+                hellMat('#ff3300', { emissive: true })
+            )
+            crack.position.set(x, 0.02, z)
+            this.group.add(crack)
+            this.lavaMeshes.push({ mesh: crack, phase: x + z })
         }
 
+        // Jagged rock walls
         const wall = new THREE.Mesh(
-            new THREE.CylinderGeometry(R, R * 1.02, H, 40, 1, true),
-            this.mat('#ffe8d6', { hasFog: false })
+            new THREE.CylinderGeometry(R, R * 1.05, H, 32, 1, true),
+            hellMat('#120404')
         )
-        wall.position.y = H * 0.5 - 0.3
+        wall.position.y = H * 0.5 - 0.5
         this.group.add(wall)
 
-        const wallTrim = new THREE.Mesh(
-            new THREE.TorusGeometry(R * 0.99, 0.35, 8, 40),
-            this.mat('#ff9f1c')
+        // Red-hot rim
+        const rim = new THREE.Mesh(
+            new THREE.TorusGeometry(R * 0.99, 0.45, 8, 40),
+            hellMat('#ff2200', { emissive: true })
         )
-        wallTrim.rotation.x = Math.PI / 2
-        wallTrim.position.y = 0.15
-        this.group.add(wallTrim)
+        rim.rotation.x = Math.PI / 2
+        rim.position.y = 0.1
+        this.group.add(rim)
 
+        // Smoky hell ceiling dome
         const ceil = new THREE.Mesh(
-            new THREE.SphereGeometry(R * 0.98, 28, 14, 0, Math.PI * 2, 0, Math.PI * 0.52),
-            this.mat('#fff0d6')
+            new THREE.SphereGeometry(R * 0.97, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.48),
+            hellMat('#0d0202')
         )
-        ceil.position.y = 1.5
+        ceil.position.y = 2
         ceil.rotation.x = Math.PI
         this.group.add(ceil)
 
-        // Soft cloud puffs under dome
-        for(let i = 0; i < 8; i++)
+        // Hanging rock spikes
+        for(let i = 0; i < 14; i++)
         {
-            const a = (i / 8) * Math.PI * 2
-            const cloud = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 6), this.mat('#ffffff', { hasFog: false }))
-            cloud.scale.set(1.6, 0.5, 0.9)
-            cloud.position.set(Math.cos(a) * 16, 9.5, Math.sin(a) * 16)
-            this.group.add(cloud)
-            this.floaters.push({ mesh: cloud, baseY: 9.5, phase: i * 0.8, amp: 0.15 })
+            const a = (i / 14) * Math.PI * 2
+            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.5 + (i % 3), 5), hellMat('#2a1010'))
+            spike.position.set(Math.cos(a) * 15, 12 + (i % 4), Math.sin(a) * 15)
+            spike.rotation.x = Math.PI
+            spike.rotation.z = Math.sin(a) * 0.3
+            this.group.add(spike)
         }
+
+        // Spawn bridge over lava moat
+        const bridge = new THREE.Mesh(new THREE.BoxGeometry(5, 0.25, 8), hellMat('#2a1515'))
+        bridge.position.set(0, 0.12, 16)
+        this.group.add(bridge)
+        this.addFixedBody(this.w(0, 0.2, 16), [ 2.5, 0.2, 4 ])
     }
 
-    buildPasture()
+    buildLavaRivers()
     {
-        const pasture = new THREE.Mesh(
-            new THREE.CylinderGeometry(7, 7.2, 0.08, 24),
-            this.mat('#c8f7dc')
-        )
-        pasture.position.set(-10, 0.06, 8)
-        this.group.add(pasture)
-
-        const logBench = makeDockPlank(-10, 10, 0.8, 2.8)
-        logBench.position.y = 0
-        this.group.add(logBench)
-        this.addFixedBody(this.w(-10, 0.25, 10), [ 1.4, 0.15, 0.55 ])
-
-        const sheepSpots = [
-            { x: -12, z: 7, yaw: 0.5, scale: 1.1 },
-            { x: -8, z: 6, yaw: -0.7, scale: 0.95 },
-            { x: -11, z: 9.5, yaw: 1.2, scale: 1.0 },
-            { x: -7, z: 8.5, yaw: -0.2, scale: 0.88 },
+        const pools = [
+            { x: -10, z: 4, r: 4.5 },
+            { x: 12, z: -6, r: 3.8 },
+            { x: -6, z: -12, r: 3.2 },
+            { x: 8, z: 10, r: 2.8 },
+            { x: 0, z: -18, r: 5 },
         ]
-        for(const s of sheepSpots)
+        for(const p of pools)
         {
-            const sheep = makeSheep({
-                position: { x: s.x, y: 0, z: s.z },
-                yaw: s.yaw,
-                scale: s.scale,
-                wool: '#ffffff',
-            })
-            this.group.add(sheep)
-            this.addFixedBody(this.w(s.x, 0.35, s.z), [ 0.45, 0.35, 0.45 ])
+            const pool = makeLavaPool(p.x, p.z, p.r)
+            this.group.add(pool)
+            if(pool.userData.lavaPulse)
+                this.lavaMeshes.push(pool.userData.lavaPulse)
         }
 
-        const pond = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.9, 0.06, 20), this.mat('#7ec8ff'))
-        pond.position.set(6, 0.04, 10)
-        this.group.add(pond)
-
-        for(const [dx, dz] of [ [5.2, 10.5], [6.8, 9.6], [7.1, 10.8] ])
+        const floats = [
+            { x: -8, y: 2.2, z: 6, s: 1.1 },
+            { x: 5, y: 3.5, z: -4, s: 0.85 },
+            { x: -3, y: 2.8, z: -10, s: 1.0 },
+            { x: 11, y: 4.2, z: 8, s: 0.7 },
+            { x: -14, y: 3.0, z: -2, s: 0.9 },
+        ]
+        for(const f of floats)
         {
-            const duck = makeDuck({ position: { x: dx, y: 0.08, z: dz }, yaw: Math.random() * 2 })
-            this.group.add(duck)
-            this.floaters.push({
-                mesh: duck,
-                baseX: dx,
-                baseY: 0.08,
-                baseZ: dz,
-                phase: dx,
-                amp: 0.03,
-                drift: 0.08,
-            })
+            const chunk = makeFloatingLava(f.x, f.y, f.z, f.s)
+            this.group.add(chunk)
+            if(chunk.userData.float)
+                this.floaters.push(chunk.userData.float)
         }
     }
 
-    buildPatrons()
+    buildAshAndEmbers()
+    {
+        this.ashField = makeAshField(180, 24, 16)
+        this.group.add(this.ashField)
+    }
+
+    buildThroneCourt()
+    {
+        this.throne = makeThroneOfHell()
+        this.throne.position.set(0, 0, -16)
+        this.group.add(this.throne)
+        this.addFixedBody(this.w(0, 0.6, -16), [ 5, 0.6, 4 ])
+        this.addFixedBody(this.w(0, 3, -16), [ 2.5, 3, 1 ])
+
+        this.group.add(makeBonePile(-6, -12, 0.4))
+        this.group.add(makeBonePile(7, -13, -0.3))
+        this.group.add(makeBonePile(-4, -18, 0.8))
+    }
+
+    buildTortureRing()
     {
         const spots = [
-            { name: 'stackDevA', x: -2, z: 12, yaw: 2.8, outfit: 'indigo', drink: 'coffee', phase: 0.2, pose: 'standing' },
-            { name: 'stackDevB', x: 3, z: 11, yaw: -2.4, outfit: 'rose', drink: 'chai', phase: 1.1, pose: 'standing' },
-            { name: 'stackQA', x: -14, z: 2, yaw: 0.6, outfit: 'mango', drink: 'coffee', phase: 2.3, pose: 'standing' },
-            { name: 'stackShip', x: 8, z: -8, yaw: -1.0, outfit: 'teal', drink: 'chai', phase: 0.7, pose: 'standing' },
-        ]
-        for(const s of spots)
-        {
-            const patron = new VoxelPatron({
-                name: s.name,
-                position: { x: s.x, y: 0, z: s.z },
-                yaw: s.yaw,
-                outfit: s.outfit,
-                drink: s.drink,
-                phase: s.phase,
-                pose: s.pose,
-            })
-            this.patrons.push(patron)
-            this.group.add(patron.group)
-        }
-    }
-
-    buildCandyGrove()
-    {
-        const trees = [
-            { x: 18, z: 6, trunk: '#ff9f1c', canopy: '#ff6b35' },
-            { x: -18, z: -6, trunk: '#2ec4b6', canopy: '#7ec8ff' },
-            { x: 18, z: -10, trunk: '#ff8fab', canopy: '#ffe066' },
-            { x: -20, z: 14, trunk: '#7b5cff', canopy: '#ffc4d6' },
-        ]
-        for(const t of trees)
-        {
-            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 2.2, 8), this.mat(t.trunk))
-            trunk.position.set(t.x, 1.1, t.z)
-            const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.4, 10, 8), this.mat(t.canopy))
-            canopy.position.set(t.x, 2.8, t.z)
-            this.group.add(trunk, canopy)
-            this.addFixedBody(this.w(t.x, 1.1, t.z), [ 0.4, 1.1, 0.4 ])
-            this.spinners.push({ mesh: canopy, speed: 0.12, axis: 'y' })
-        }
-    }
-
-    buildSpawnPlaza()
-    {
-        const disc = new THREE.Mesh(
-            new THREE.CylinderGeometry(4.5, 4.7, 0.2, 6),
-            this.mat('#ffe066')
-        )
-        disc.position.set(0, 0.1, 14)
-        this.group.add(disc)
-
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(5, 0.18, 8, 6), this.mat('#ff6b35'))
-        ring.rotation.x = Math.PI / 2
-        ring.position.set(0, 0.25, 14)
-        this.group.add(ring)
-        this.spinners.push({ mesh: ring, speed: 0.35, axis: 'z' })
-
-        const left = new THREE.Mesh(new THREE.BoxGeometry(1, 4, 1), this.mat('#2ec4b6'))
-        left.position.set(-3.5, 2, 14)
-        const right = left.clone()
-        right.position.x = 3.5
-        const lintel = new THREE.Mesh(new THREE.BoxGeometry(8, 0.8, 1), this.mat('#ff9f1c'))
-        lintel.position.set(0, 4.4, 14)
-        this.group.add(left, right, lintel)
-        this.addFixedBody(this.w(-3.5, 2, 14), [ 0.5, 2, 0.5 ])
-        this.addFixedBody(this.w(3.5, 2, 14), [ 0.5, 2, 0.5 ])
-        this.addFixedBody(this.w(0, 4.4, 14), [ 4, 0.4, 0.5 ])
-    }
-
-    buildDuckShrine()
-    {
-        const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.6, 0.5, 12), this.mat('#ff9f1c'))
-        pedestal.position.set(0, 0.25, 0)
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.12, 8, 24), this.mat('#7ec8ff'))
-        ring.rotation.x = Math.PI / 2
-        ring.position.set(0, 0.55, 0)
-        this.group.add(pedestal, ring)
-        this.addFixedBody(this.w(0, 0.25, 0), [ 2.2, 0.25, 2.2 ])
-
-        const body = new THREE.Mesh(new THREE.SphereGeometry(1.5, 12, 10), this.mat('#ffe566'))
-        body.position.set(0, 1.55, 0)
-        const beak = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.48, 0.75), this.mat('#ff6b35'))
-        beak.position.set(0, 1.65, 1.55)
-        const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), this.mat('#1a1a1a'))
-        eyeL.position.set(-0.48, 2.05, 0.95)
-        const eyeR = eyeL.clone()
-        eyeR.position.x = 0.48
-        const bow = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.15), this.mat('#ff8fab'))
-        bow.position.set(0, 2.35, 1.1)
-        this.group.add(body, beak, eyeL, eyeR, bow)
-        this.addFixedBody(this.w(0, 1.55, 0), [ 1.4, 1.4, 1.4 ])
-
-        const bitColors = [ '#7ec8ff', '#ff8fab', '#2ec4b6', '#ffe066', '#ff6b35', '#c8f7dc', '#7b5cff', '#ffd6a5' ]
-        for(let i = 0; i < 8; i++)
-        {
-            const bit = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), this.mat(bitColors[i]))
-            const a = (i / 8) * Math.PI * 2
-            bit.position.set(Math.cos(a) * 4.2, 2.6 + (i % 3) * 0.5, Math.sin(a) * 4.2)
-            this.group.add(bit)
-            this.floaters.push({
-                mesh: bit,
-                baseY: bit.position.y,
-                phase: i,
-                amp: 0.28,
-                orbit: { radius: 4.2, speed: 0.35 + i * 0.04, angle: a },
-            })
-        }
-    }
-
-    buildModuleArcade()
-    {
-        const cans = [
-            { x: 10, z: -4, h: 2.2, hex: '#7ec8ff' },
-            { x: 13, z: 0, h: 3.2, hex: '#ff8fab' },
-            { x: 15, z: -6, h: 2.2, hex: '#2ec4b6' },
-            { x: 11, z: 4, h: 4, hex: '#ff9f1c' },
-            { x: 14, z: 6, h: 2.8, hex: '#ffe066' },
-        ]
-        for(const c of cans)
-        {
-            const mesh = new THREE.Mesh(
-                new THREE.CylinderGeometry(1.1, 1.1, c.h, 10),
-                this.mat(c.hex)
-            )
-            mesh.position.set(c.x, c.h * 0.5, c.z)
-            this.group.add(mesh)
-            this.addFixedBody(this.w(c.x, c.h * 0.5, c.z), [ 1.05, c.h * 0.5, 1.05 ])
-        }
-
-        const rings = [
-            { x: 12, y: 2.5, z: -2 },
-            { x: 12, y: 3.5, z: 2 },
-            { x: 12, y: 4.5, z: -5 },
-        ]
-        for(const r of rings)
-        {
-            const torus = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.12, 8, 16), this.mat('#ff6b35'))
-            torus.position.set(r.x, r.y, r.z)
-            this.group.add(torus)
-            this.spinners.push({ mesh: torus, speed: 0.55, axis: 'y' })
-        }
-    }
-
-    buildSoftPillars()
-    {
-        const spots = [
-            [16, 12], [-16, 12], [16, -12], [-16, -12], [0, 18], [0, -18],
+            [-16, 4], [16, 2], [-14, -6], [15, -8], [-8, 14], [10, 12],
         ]
         for(const [x, z] of spots)
         {
-            const pole = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.7, 0.9, 5, 8),
-                this.mat('#c8f0e8')
-            )
-            pole.position.set(x, 2.5, z)
-            const cap = new THREE.Mesh(new THREE.SphereGeometry(0.85, 10, 10), this.mat('#ffe066'))
-            cap.position.set(x, 5.2, z)
-            this.group.add(pole, cap)
-            this.addFixedBody(this.w(x, 2.5, z), [ 0.8, 2.5, 0.8 ])
+            const pillar = makeTorturePillar(x, z)
+            this.group.add(pillar)
+            if(pillar.userData.torture)
+                this.torturePosts.push(pillar.userData.torture)
+            this.addFixedBody(this.w(x, 1.75, z), [ 0.3, 1.75, 0.3 ])
         }
     }
 
-    buildStickyYard()
+    buildDragParades()
     {
-        const notes = [
-            { x: -14, z: 4, sx: 0.9, sy: 0.15, sz: 0.7, hex: '#ff8fab' },
-            { x: -12, z: 5, sx: 0.8, sy: 0.15, sz: 0.6, hex: '#7ec8ff' },
-            { x: -10, z: 3, sx: 0.7, sy: 0.15, sz: 0.55, hex: '#ffe066' },
-            { x: -13, z: 1, sx: 0.85, sy: 0.15, sz: 0.65, hex: '#2ec4b6' },
-            { x: -11, z: -1, sx: 0.6, sy: 0.6, sz: 0.6, hex: '#ff9f1c' },
-            { x: -15, z: -2, sx: 0.5, sy: 0.9, sz: 0.5, hex: '#ff6b35' },
-            { x: -9, z: 6, sx: 1.0, sy: 0.4, sz: 0.7, hex: '#c8f0e8' },
+        const parades = [
+            { x: -6, z: 8, yaw: 0.6 },
+            { x: 8, z: 4, yaw: -1.2 },
+            { x: -10, z: -2, yaw: 2.1 },
+            { x: 5, z: -10, yaw: -0.4 },
         ]
-        for(const n of notes)
-            this.spawnKnockable(n)
+        for(const p of parades)
+        {
+            const scene = makeDragScene(p.x, p.z, p.yaw)
+            this.group.add(scene)
+            if(scene.userData.drag)
+                this.dragScenes.push(scene.userData.drag)
+        }
     }
 
-    buildLooseBits()
+    buildDragon()
     {
-        const bits = [
-            { x: 4, z: 8, sx: 0.55, sy: 0.55, sz: 0.55, hex: '#7ec8ff' },
-            { x: -4, z: -8, sx: 0.7, sy: 0.5, sz: 0.7, hex: '#ff8fab' },
-            { x: 8, z: 5, sx: 0.45, sy: 0.8, sz: 0.45, hex: '#ffe066' },
-            { x: 6, z: -7, sx: 0.9, sy: 0.35, sz: 0.9, hex: '#2ec4b6' },
-            { x: -6, z: 9, sx: 0.65, sy: 0.65, sz: 0.65, hex: '#ff9f1c' },
-        ]
-        for(const b of bits)
-            this.spawnKnockable(b)
+        this.dragon = makeHellDragon()
+        this.group.add(this.dragon)
     }
 
-    spawnKnockable(s)
+    buildExitGate()
     {
-        const world = this.w(s.x, s.sy, s.z)
-        const mesh = new THREE.Mesh(
-            new THREE.BoxGeometry(s.sx * 2, s.sy * 2, s.sz * 2),
-            this.mat(s.hex)
-        )
-        mesh.castShadow = true
-        mesh.receiveShadow = true
-        mesh.visible = false
-        mesh.position.set(world.x, world.y, world.z)
-        mesh.userData.hellKnockable = true
-        this.game.scene.add(mesh)
-
-        const object = this.game.objects.add(
-            {
-                model: mesh,
-                parent: this.game.scene,
-                updateMaterials: false,
-                castShadow: true,
-                receiveShadow: true,
-            },
-            {
-                type: 'dynamic',
-                position: world,
-                friction: 0.4,
-                restitution: 0.28,
-                linearDamping: 0.12,
-                angularDamping: 0.22,
-                sleeping: true,
-                enabled: false,
-                colliders: [
-                    {
-                        shape: 'cuboid',
-                        parameters: [ s.sx, s.sy, s.sz ],
-                        position: { x: 0, y: 0, z: 0 },
-                        category: 'object',
-                    },
-                ],
-            }
-        )
-        this.knockables.push({ object, mesh, local: { x: s.x, y: s.sy, z: s.z } })
-        if(object?.physical?.body)
-            this.physicsBodies.push(object.physical.body)
-    }
-
-    buildShipGate()
-    {
-        const left = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5.5, 1.2), this.mat('#2ec4b6'))
-        left.position.set(-3.2, 2.75, -20)
-        const right = left.clone()
-        right.position.x = 3.2
-        const beam = new THREE.Mesh(new THREE.BoxGeometry(8, 1, 1.2), this.mat('#ff9f1c'))
-        beam.position.set(0, 5.6, -20)
-        const plaque = new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 0.3), this.mat('#ffe066'))
-        plaque.position.set(0, 3.2, -19.4)
-        const portal = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 0.45, 28), this.mat('#7ec8ff'))
-        portal.rotation.x = Math.PI / 2
-        portal.position.set(0, 2.6, -20)
-        const inner = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.3, 28), this.mat('#ff8fab'))
-        inner.rotation.x = Math.PI / 2
-        inner.position.set(0, 2.6, -19.9)
-        this.group.add(left, right, beam, plaque, portal, inner)
-        this.exitPortalMesh = portal
-        this.exitInner = inner
-        this.addFixedBody(this.w(-3.2, 2.75, -20), [ 0.6, 2.75, 0.6 ])
-        this.addFixedBody(this.w(3.2, 2.75, -20), [ 0.6, 2.75, 0.6 ])
-        this.addFixedBody(this.w(0, 5.6, -20), [ 4, 0.5, 0.6 ])
+        const gate = makeHellGate()
+        gate.position.set(0, 0, 20)
+        this.group.add(gate)
+        this.exitPortalMesh = gate.userData.exitPortal?.outer
+        this.exitInner = gate.userData.exitPortal?.inner
+        this.addFixedBody(this.w(-3.5, 3, 20), [ 0.7, 3, 0.7 ])
+        this.addFixedBody(this.w(3.5, 3, 20), [ 0.7, 3, 0.7 ])
+        this.addFixedBody(this.w(0, 6.2, 20), [ 4.5, 0.6, 0.8 ])
     }
 
     buildPhysicsShell()
@@ -451,7 +273,7 @@ export class PocketDimension
 
         this.addFixedBody({ x: ox, y: oy - 0.4, z: oz }, [ H + 2, 0.4, H + 2 ], 'floor')
 
-        const wallH = 6
+        const wallH = 8
         const walls = [
             { x: ox, y: oy + wallH * 0.5, z: oz + H + 0.5, p: [ H + 2, wallH * 0.5, 0.5 ] },
             { x: ox, y: oy + wallH * 0.5, z: oz - H - 0.5, p: [ H + 2, wallH * 0.5, 0.5 ] },
@@ -493,10 +315,10 @@ export class PocketDimension
 
     setInteract()
     {
-        const worldExit = this.w(0, 2.8, -20)
+        const worldExit = this.w(0, 3.5, 20)
         this.exitPoint = this.game.interactivePoints.create(
             new THREE.Vector3(worldExit.x, worldExit.y, worldExit.z),
-            'Ship It',
+            'Escape',
             InteractivePoints.ALIGN_LEFT,
             InteractivePoints.STATE_HIDDEN,
             () => this.onExitRequest?.(),
@@ -510,23 +332,6 @@ export class PocketDimension
     {
         for(const body of this.physicsBodies)
             body?.setEnabled(on)
-
-        for(const k of this.knockables)
-        {
-            if(k.mesh)
-                k.mesh.visible = on
-            if(!on)
-                continue
-            const body = k.object?.physical?.body
-            if(!body)
-                continue
-            const world = this.w(k.local.x, k.local.y, k.local.z)
-            body.setTranslation(world, true)
-            body.setLinvel({ x: 0, y: 0, z: 0 }, true)
-            body.setAngvel({ x: 0, y: 0, z: 0 }, true)
-            body.wakeUp?.()
-            k.object.needsUpdate = true
-        }
     }
 
     isolateWorld(on)
@@ -594,7 +399,7 @@ export class PocketDimension
             position: new THREE.Vector3(
                 PocketDimension.ORIGIN.x,
                 PocketDimension.ORIGIN.y + 1.2,
-                PocketDimension.ORIGIN.z + 12
+                PocketDimension.ORIGIN.z + 14
             ),
             rotation: Math.PI,
         }
@@ -602,8 +407,51 @@ export class PocketDimension
 
     isNearExit(playerPos, radius = 3.8)
     {
-        const exit = this.w(0, 1.5, -20)
+        const exit = this.w(0, 1.5, 20)
         return playerPos.distanceTo(new THREE.Vector3(exit.x, exit.y, exit.z)) < radius
+    }
+
+    _tickAsh(elapsed)
+    {
+        if(!this.ashField?.userData?.ash)
+            return
+        const { speeds, spread, height } = this.ashField.userData.ash
+        const pos = this.ashField.geometry.attributes.position
+        for(let i = 0; i < speeds.length; i++)
+        {
+            let y = pos.getY(i) + speeds[i] * 0.012
+            if(y > height)
+                y = Math.random() * 2
+            pos.setY(i, y)
+            pos.setX(i, pos.getX(i) + Math.sin(elapsed * 0.5 + i) * 0.008)
+        }
+        pos.needsUpdate = true
+    }
+
+    _tickDragon(elapsed)
+    {
+        if(!this.dragon?.userData?.dragon)
+            return
+        const d = this.dragon.userData.dragon
+        d.angle += d.orbitSpeed * 0.016
+        this.dragon.position.set(
+            Math.cos(d.angle) * d.orbitRadius,
+            d.orbitY + Math.sin(elapsed * 0.8) * 1.2,
+            Math.sin(d.angle) * d.orbitRadius * 0.65 - 4
+        )
+        this.dragon.rotation.y = -d.angle + Math.PI * 0.5
+        d.wingL.rotation.z = 0.3 + Math.sin(elapsed * 3.5) * 0.55
+        d.wingR.rotation.z = -0.3 - Math.sin(elapsed * 3.5) * 0.55
+        if(d.fireGroup)
+        {
+            d.fireGroup.rotation.y = Math.sin(elapsed * 4) * 0.15
+            for(let i = 0; i < d.fireGroup.children.length; i++)
+            {
+                const ember = d.fireGroup.children[i]
+                ember.position.x = 0.2 + i * 0.35 + Math.sin(elapsed * 6 + i) * 0.1
+                ember.scale.setScalar(0.8 + Math.sin(elapsed * 8 + i) * 0.35)
+            }
+        }
     }
 
     update(elapsed)
@@ -627,41 +475,47 @@ export class PocketDimension
         if(water?.ice?.physical?.body)
             water.ice.physical.body.setEnabled(false)
 
+        for(const l of this.lavaMeshes)
+        {
+            if(!l.mesh)
+                continue
+            const pulse = 0.85 + Math.sin(elapsed * 2.2 + l.phase) * 0.15
+            l.mesh.scale.set(pulse, 1, pulse)
+        }
+
         for(const f of this.floaters)
         {
-            if(f.orbit)
-            {
-                f.orbit.angle += f.orbit.speed * 0.016
-                f.mesh.position.x = Math.cos(f.orbit.angle) * f.orbit.radius
-                f.mesh.position.z = Math.sin(f.orbit.angle) * f.orbit.radius
-            }
-            else if(f.baseX != null)
-            {
-                f.mesh.position.x = f.baseX + Math.sin(elapsed * 0.7 + f.phase) * (f.drift ?? 0.1)
-                f.mesh.position.z = f.baseZ + Math.cos(elapsed * 0.6 + f.phase) * (f.drift ?? 0.1) * 0.7
-            }
-            f.mesh.position.y = f.baseY + Math.sin(elapsed * 1.8 + f.phase) * f.amp
+            if(!f.mesh)
+                continue
+            f.mesh.position.y = f.baseY + Math.sin(elapsed * 1.4 + f.phase) * f.amp
+            f.mesh.position.x += Math.sin(elapsed * 0.6 + f.phase) * f.drift * 0.004
         }
-        for(const p of this.patrons)
+
+        for(const d of this.dragScenes)
         {
-            let lookPos = null
-            if(this.game.player?.position)
-            {
-                lookPos = this.game.player.position.clone()
-                lookPos.sub(PocketDimension.ORIGIN)
-            }
-            p.update(elapsed, lookPos)
+            d.demon.position.x = Math.sin(elapsed * 0.4 + d.phase) * 0.15
+            d.victim.position.z = 0.6 + Math.sin(elapsed * 0.4 + d.phase) * 0.25
+            d.victim.rotation.z = Math.sin(elapsed * 1.2 + d.phase) * 0.12
         }
-        for(const s of this.spinners)
+
+        for(const t of this.torturePosts)
+            t.victim.rotation.y = Math.sin(elapsed * 0.8 + t.phase) * 0.2
+
+        if(this.throne?.userData?.throneFlames)
         {
-            if(s.axis === 'y')
-                s.mesh.rotation.y += s.speed * 0.016
-            else
-                s.mesh.rotation.z += s.speed * 0.016
+            for(const flame of this.throne.userData.throneFlames)
+            {
+                flame.scale.y = 0.8 + Math.sin(elapsed * 5) * 0.35
+                flame.rotation.y = elapsed * 2
+            }
         }
+
+        this._tickAsh(elapsed)
+        this._tickDragon(elapsed)
+
         if(this.exitPortalMesh)
-            this.exitPortalMesh.rotation.z = -elapsed * 1.1
+            this.exitPortalMesh.rotation.z = -elapsed * 1.4
         if(this.exitInner)
-            this.exitInner.rotation.z = elapsed * 1.6
+            this.exitInner.rotation.z = elapsed * 2.2
     }
 }

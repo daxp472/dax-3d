@@ -177,12 +177,13 @@ Do not put Beach Club `InteractivePoints` on top of loungers — the Enter/A key
 
 ---
 
-## 7. Soft Stack / portal invariants
+## 7. Inferno pocket / portal invariants
 
-- Soft Stack is a **cream toy pocket at ground Y**, not a sky hell island.
+- Inferno is a **lava hell arena at ground Y** `(420, 0, 420)` — throne north, exit gate south.
 - Camera **focus Y stays `0`** (`View` / `VoidPortal`). Never put spawn Y into focus Y.
 - Portal mouth stays clear of altar mesh center `(75.34, −27.95)`.
 - VoidPortal failure is non-fatal — World continues.
+- Enter sets blood-red fog override; exit restores day cycle.
 
 ---
 

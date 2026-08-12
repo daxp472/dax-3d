@@ -6,7 +6,7 @@ import { PocketDimension } from './PocketDimension.js'
 import { vibeMat } from './VoxelPatron.js'
 
 /**
- * Altar pit → Wonder Pocket teleport (Folio-style sealed playground).
+ * Altar pit → Inferno pocket teleport.
  */
 export class VoidPortal
 {
@@ -31,7 +31,7 @@ export class VoidPortal
         this.tickCallback = () => this.update()
         this.game.ticker.events.on('tick', this.tickCallback, 12)
 
-        console.info('[VoidPortal] Soft Stack gate ready @', VoidPortal.HOLE.toArray().map((n) => n.toFixed(1)).join(', '))
+        console.info('[VoidPortal] Inferno gate ready @', VoidPortal.HOLE.toArray().map((n) => n.toFixed(1)).join(', '))
     }
 
     buildMouthVfx()
@@ -81,7 +81,7 @@ export class VoidPortal
         p.y = 1.8
         this.mouthPoint = this.game.interactivePoints.create(
             p,
-            'Soft Stack',
+            'Inferno',
             InteractivePoints.ALIGN_RIGHT,
             InteractivePoints.STATE_CONCEALED,
             () => this.enterDimension('interact'),
@@ -116,7 +116,7 @@ export class VoidPortal
         this.game.inputs.filters.add('cinematic')
 
         this.game.notifications.show(
-            `<div class="top"><div class="title">The Soft Stack</div></div><div class="bottom"><div class="description">Altar opens. Crossing into a candy WIP pocket…</div></div>`,
+            `<div class="top"><div class="title">Inferno</div></div><div class="bottom"><div class="description">The pit opens. Lava, demons, and the King await below…</div></div>`,
             'void-portal',
             2.5,
             null,
@@ -125,17 +125,23 @@ export class VoidPortal
 
         this.game.overlay.show(() =>
         {
-            // Tight dark fog — hell pocket only
+            // Blood-red hell atmosphere
             this.game.weather?.override?.start?.(
-                { humidity: 0, electricField: 0.7, clouds: 0.35, wind: 0.15 },
+                { humidity: 0.15, electricField: 0.9, clouds: 0.85, wind: 0.45 },
                 0
             )
             this.game.dayCycles?.override?.start?.(
                 {
-                    progress: 0.45,
-                    fogNearRatio: -0.2,
-                    fogFarRatio: 0.55,
-                    lightIntensity: 2.2,
+                    progress: 0.48,
+                    fogNearRatio: -0.35,
+                    fogFarRatio: 0.42,
+                    lightIntensity: 1.8,
+                    fogColorA: new THREE.Color('#1a0000'),
+                    fogColorB: new THREE.Color('#ff2200'),
+                    lightColor: new THREE.Color('#ff6633'),
+                    shadowColor: new THREE.Color('#330000'),
+                    revealColor: new THREE.Color('#ff4400'),
+                    revealIntensity: 8,
                 },
                 0
             )
@@ -163,7 +169,7 @@ export class VoidPortal
             this.game.overlay.hide()
 
             this.game.achievements?.setProgress?.('voidPortal', 1)
-            console.info(`[VoidPortal] entered Soft Stack via ${reason} @`, spawn.position.toArray().map((n) => n.toFixed(1)).join(', '))
+            console.info(`[VoidPortal] entered Inferno via ${reason} @`, spawn.position.toArray().map((n) => n.toFixed(1)).join(', '))
         })
     }
 
@@ -206,7 +212,7 @@ export class VoidPortal
             this.game.overlay.hide()
 
             this.game.notifications.show(
-                `<div class="top"><div class="title">Returned</div></div><div class="bottom"><div class="description">Back at the altar road. The pit still hums.</div></div>`,
+                `<div class="top"><div class="title">Escaped</div></div><div class="bottom"><div class="description">Back at the altar. The pit still breathes fire.</div></div>`,
                 'void-portal-exit',
                 2.2,
                 null,

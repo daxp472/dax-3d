@@ -99,7 +99,7 @@ export class AltarApproach
             () =>
             {
                 this.game.notifications.show(
-                    `<div class="top"><div class="title">Cataclysm Road</div></div><div class="bottom"><div class="description">Drive into the pit — The Soft Stack opens. Sacrifice still counts.</div></div>`,
+                    `<div class="top"><div class="title">Cataclysm Road</div></div><div class="bottom"><div class="description">Drive into the pit — Inferno opens. The King of Hell waits below.</div></div>`,
                     'altar-approach',
                     2.8,
                     null,
