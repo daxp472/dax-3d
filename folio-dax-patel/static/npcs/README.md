@@ -1,12 +1,19 @@
 # NPC assets
 
-## Dax (spawn character)
+## Procedural chai patrons (primary)
 
-- **File:** `soldier.glb`
-- **Role:** Upright humanoid at landing spawn (idle / walk / run)
-- **Notes:** Local asset already in `static/npcs/` ? no floating text blocks
+- **Code:** `sources/Game/World/Dressing/VoxelPatron.js`
+- Cute chibi stylized NPCs (LetterBuilder DNA) — used for booth / stool / fishing / standing
+- Sheep / ducks: `ToyCritters.js`
 
-## Optional / unused
+## Gobkit Free Minions (CC0) — optional ambient
 
-- `minion-b01.glb` ? Gobkit Minion B-1 (CC0)
-- `bruno.glb` / `sudo.glb` ? legacy Draco characters
+- **Folder:** `gobkit-free/`
+- **Source:** https://gobkit.com/api/free · zip https://gobkit.com/freebies/gobkit-free-pack.zip
+- **License:** CC0 1.0
+- Rigged GLBs with idle/attack/dead (24fps subclips). Monster-minion look — better for Soft Stack ambient than chai lounge.
+- Not wired as seated café patrons (wrong vibe + no sit poses).
+
+## Dax spawn
+
+- **File:** `soldier.glb` (if present) — upright humanoid at landing

@@ -2,55 +2,62 @@ import * as THREE from 'three/webgpu'
 import { vibeMat } from './VoxelPatron.js'
 
 /**
- * Procedural folio toys — sheep / ducks / reeds (no GLB assets).
+ * Cute stylized folio critters — fluffy sheep, readable ducks (not trash boxes).
  */
+
 export function makeSheep(options = {})
 {
     const scale = options.scale ?? 1
-    const wool = options.wool ?? '#f5f0e6'
-    const woolDeep = options.woolDeep ?? '#e8dfd0'
-    const face = options.face ?? '#2a2420'
-    const leg = options.leg ?? '#3d342c'
+    const wool = options.wool ?? '#fff8f0'
+    const woolDeep = options.woolDeep ?? '#f0e6d8'
+    const face = options.face ?? '#3d342c'
     const blush = options.blush ?? '#f0a090'
 
     const g = new THREE.Group()
     g.name = options.name ?? 'sheep'
 
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.55, 0.55), vibeMat(wool, true))
-    body.position.y = 0.55
+    // Soft body (slightly stretched sphere + wool puffs)
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10), vibeMat(wool, true))
+    body.scale.set(1.25, 1.0, 1.05)
+    body.position.y = 0.58
     g.add(body)
 
-    // Fluffy bumps
-    const bumps = [
-        [ 0.28, 0.78, 0.12 ], [ -0.28, 0.78, -0.1 ], [ 0.05, 0.82, -0.18 ],
-        [ -0.1, 0.72, 0.22 ], [ 0.32, 0.62, -0.2 ], [ -0.32, 0.62, 0.15 ],
+    const puffSpots = [
+        [ 0.32, 0.78, 0.15 ], [ -0.32, 0.78, -0.12 ], [ 0.05, 0.9, -0.2 ],
+        [ -0.12, 0.72, 0.28 ], [ 0.35, 0.55, -0.22 ], [ -0.35, 0.55, 0.18 ],
+        [ 0, 0.95, 0.05 ], [ 0.2, 0.85, 0.22 ], [ -0.22, 0.88, -0.05 ],
     ]
-    for(const [x, y, z] of bumps)
+    for(const [x, y, z] of puffSpots)
     {
-        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 5), vibeMat(woolDeep, true))
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), vibeMat(woolDeep, true))
         puff.position.set(x, y, z)
         g.add(puff)
     }
 
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.3, 0.28), vibeMat(face))
+    // Head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), vibeMat(face))
     head.position.set(0.48, 0.62, 0)
     g.add(head)
 
-    const snout = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.16), vibeMat('#1a1614'))
-    snout.position.set(0.64, 0.55, 0)
+    const snout = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), vibeMat('#2a2420'))
+    snout.scale.set(1.2, 0.85, 1)
+    snout.position.set(0.66, 0.55, 0)
     g.add(snout)
 
-    const earL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.06), vibeMat(face))
+    // Ears
+    const earL = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), vibeMat(face))
+    earL.scale.set(0.6, 1.2, 0.5)
     earL.position.set(0.42, 0.78, 0.16)
-    earL.rotation.z = 0.35
+    earL.rotation.z = 0.4
     const earR = earL.clone()
     earR.position.z = -0.16
-    earR.rotation.z = -0.35
+    earR.rotation.z = -0.4
     g.add(earL, earR)
 
-    const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.04), vibeMat('#ffffff'))
+    // Eyes
+    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 5), vibeMat('#ffffff'))
     eyeL.position.set(0.58, 0.68, 0.1)
-    const pupilL = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.03), vibeMat('#111111'))
+    const pupilL = new THREE.Mesh(new THREE.SphereGeometry(0.03, 5, 4), vibeMat('#111111'))
     pupilL.position.set(0.61, 0.68, 0.1)
     const eyeR = eyeL.clone()
     eyeR.position.z = -0.1
@@ -58,27 +65,29 @@ export function makeSheep(options = {})
     pupilR.position.z = -0.1
     g.add(eyeL, pupilL, eyeR, pupilR)
 
-    const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.03), vibeMat(blush))
-    cheek.position.set(0.56, 0.58, 0.12)
-    const cheekR = cheek.clone()
+    const cheekL = new THREE.Mesh(new THREE.SphereGeometry(0.045, 5, 4), vibeMat(blush))
+    cheekL.position.set(0.55, 0.56, 0.12)
+    const cheekR = cheekL.clone()
     cheekR.position.z = -0.12
-    g.add(cheek, cheekR)
+    g.add(cheekL, cheekR)
 
-    for(const sx of [ -0.22, 0.18 ])
+    // Legs
+    for(const sx of [ -0.2, 0.2 ])
     {
         for(const sz of [ -0.16, 0.16 ])
         {
-            const limb = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.38, 0.12), vibeMat(leg))
-            limb.position.set(sx, 0.19, sz)
+            const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.36, 6), vibeMat('#3d342c'))
+            limb.position.set(sx, 0.2, sz)
             g.add(limb)
-            const hoof = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.14), vibeMat('#1a1614'))
-            hoof.position.set(sx, 0.03, sz)
+            const hoof = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 4), vibeMat('#1a1614'))
+            hoof.scale.set(1, 0.55, 1.1)
+            hoof.position.set(sx, 0.04, sz)
             g.add(hoof)
         }
     }
 
-    const tail = new THREE.Mesh(new THREE.SphereGeometry(0.1, 5, 4), vibeMat(wool))
-    tail.position.set(-0.42, 0.55, 0)
+    const tail = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 5), vibeMat(wool))
+    tail.position.set(-0.48, 0.55, 0)
     g.add(tail)
 
     g.scale.setScalar(scale)
@@ -98,31 +107,30 @@ export function makeDuck(options = {})
     const g = new THREE.Group()
     g.name = options.name ?? 'duck'
 
-    const body = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), vibeMat(bodyHex, true))
-    body.position.y = 0.22
-    body.scale.set(1.15, 0.85, 1)
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), vibeMat(bodyHex, true))
+    body.position.y = 0.26
+    body.scale.set(1.2, 0.9, 1.05)
     g.add(body)
 
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), vibeMat(bodyHex, true))
-    head.position.set(0.22, 0.38, 0)
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), vibeMat(bodyHex, true))
+    head.position.set(0.24, 0.42, 0)
     g.add(head)
 
-    const beak = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.07, 0.1), vibeMat(beakHex))
-    beak.position.set(0.36, 0.36, 0)
+    const beak = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.12), vibeMat(beakHex))
+    beak.position.set(0.4, 0.4, 0)
     g.add(beak)
 
-    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.035, 5, 4), vibeMat('#1a1a1a'))
-    eyeL.position.set(0.28, 0.44, 0.08)
+    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 5), vibeMat('#1a1a1a'))
+    eyeL.position.set(0.3, 0.48, 0.09)
     const eyeR = eyeL.clone()
-    eyeR.position.z = -0.08
+    eyeR.position.z = -0.09
     g.add(eyeL, eyeR)
 
-    const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.14), vibeMat('#f0d84a', true))
-    wingL.position.set(0, 0.22, 0.22)
-    wingL.rotation.z = 0.2
+    const wingL = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), vibeMat('#f0d84a', true))
+    wingL.scale.set(1.1, 0.45, 0.7)
+    wingL.position.set(0, 0.26, 0.26)
     const wingR = wingL.clone()
-    wingR.position.z = -0.22
-    wingR.rotation.z = -0.2
+    wingR.position.z = -0.26
     g.add(wingL, wingR)
 
     g.scale.setScalar(scale)
@@ -140,9 +148,9 @@ export function makeReed(x, z, h = 1.2, hex = '#3d6b4f')
     g.position.set(x, 0, z)
     const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, h, 5), vibeMat(hex, true))
     stalk.position.y = h * 0.5
-    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.22, 0.06), vibeMat('#5a8a4a', true))
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 5), vibeMat('#5a8a4a', true))
+    tip.scale.set(1, 1.6, 0.7)
     tip.position.y = h + 0.05
-    tip.rotation.z = 0.25
     g.add(stalk, tip)
     return g
 }
@@ -153,16 +161,22 @@ export function makeDockPlank(x, z, yaw = 0, len = 3.2)
     g.position.set(x, 0, z)
     g.rotation.y = yaw
     const deck = new THREE.Mesh(new THREE.BoxGeometry(len, 0.12, 1.1), vibeMat('#8b6914', true))
-    deck.position.y = 0.18
-    const postA = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.55, 0.16), vibeMat('#5c4033', true))
-    postA.position.set(-len * 0.35, 0.28, 0.4)
-    const postB = postA.clone()
-    postB.position.z = -0.4
-    const postC = postA.clone()
-    postC.position.x = len * 0.35
-    const postD = postB.clone()
-    postD.position.x = len * 0.35
-    g.add(deck, postA, postB, postC, postD)
+    deck.position.y = 0.32
+    // Posts under the deck (not sticking through the top)
+    const postH = 0.28
+    const postY = postH * 0.5
+    const postGeo = new THREE.BoxGeometry(0.14, postH, 0.14)
+    const postMat = vibeMat('#5c4033', true)
+    for(const [px, pz] of [
+        [ -len * 0.35, 0.4 ], [ -len * 0.35, -0.4 ],
+        [ len * 0.35, 0.4 ], [ len * 0.35, -0.4 ],
+    ])
+    {
+        const post = new THREE.Mesh(postGeo, postMat)
+        post.position.set(px, postY, pz)
+        g.add(post)
+    }
+    g.add(deck)
     return g
 }
 
@@ -176,6 +190,48 @@ export function makeFencePost(x, z, yaw = 0)
     const rail = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 0.08), vibeMat('#8b6914', true))
     rail.position.set(0.55, 0.55, 0)
     g.add(post, rail)
+    return g
+}
+
+/** Continuous fence run — posts + double rails (not random sticks). */
+export function makeFenceRun(x0, z0, x1, z1, posts = 4)
+{
+    const g = new THREE.Group()
+    g.name = 'fenceRun'
+    const wood = vibeMat('#6b4f2a', true)
+    const railM = vibeMat('#8b6914', true)
+    const dx = x1 - x0
+    const dz = z1 - z0
+    const len = Math.hypot(dx, dz) || 1
+    const yaw = Math.atan2(dx, dz)
+
+    for(let i = 0; i < posts; i++)
+    {
+        const t = i / (posts - 1)
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.85, 0.12), wood)
+        post.position.set(x0 + dx * t, 0.42, z0 + dz * t)
+        g.add(post)
+    }
+
+    const midX = (x0 + x1) * 0.5
+    const midZ = (z0 + z1) * 0.5
+    const railA = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.07, len), railM)
+    railA.position.set(midX, 0.58, midZ)
+    railA.rotation.y = yaw
+    const railB = railA.clone()
+    railB.position.y = 0.32
+    g.add(railA, railB)
+    return g
+}
+
+/** Tight reed clump (3 stalks) — water edge only. */
+export function makeReedClump(x, z, hex = '#3d6b4f')
+{
+    const g = new THREE.Group()
+    g.position.set(x, 0, z)
+    const offsets = [ [ 0, 0, 1.15 ], [ 0.28, 0.15, 0.95 ], [ -0.22, 0.1, 1.05 ] ]
+    for(const [ox, oz, h] of offsets)
+        g.add(makeReed(ox, oz, h, hex))
     return g
 }
 
@@ -196,14 +252,14 @@ export function makeDolphin(options = {})
     snout.position.set(0.75, 0.12, 0)
     g.add(snout)
 
-    const dorsal = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 0.22), vibeMat('#4aa8c8', true))
+    const dorsal = new THREE.Mesh(new THREE.SphereGeometry(0.18, 6, 5), vibeMat('#4aa8c8', true))
+    dorsal.scale.set(0.4, 1.4, 0.7)
     dorsal.position.set(-0.05, 0.42, 0)
-    dorsal.rotation.z = 0.15
     g.add(dorsal)
 
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.45, 0.35), vibeMat('#5ab8d8', true))
+    const tail = new THREE.Mesh(new THREE.SphereGeometry(0.2, 6, 5), vibeMat('#5ab8d8', true))
+    tail.scale.set(0.5, 1.3, 1.6)
     tail.position.set(-0.85, 0.1, 0)
-    tail.rotation.z = 0.35
     g.add(tail)
 
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.05, 5, 4), vibeMat('#1a1a1a'))
@@ -221,6 +277,7 @@ export function makeDolphin(options = {})
     return g
 }
 
+/** @deprecated rod is now built into VoxelPatron fishing pose */
 export function makeFishingRod(yaw = 0)
 {
     const g = new THREE.Group()
@@ -231,9 +288,6 @@ export function makeFishingRod(yaw = 0)
     const tip = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.95), vibeMat('#8b6914', true))
     tip.position.set(0.48, 0.78, 0.42)
     tip.rotation.x = -0.82
-    const line = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.008, 0.6), vibeMat('#cccccc', true))
-    line.position.set(0.52, 0.35, 0.55)
-    line.rotation.x = -0.4
-    g.add(handle, tip, line)
+    g.add(handle, tip)
     return g
 }
