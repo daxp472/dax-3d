@@ -125,23 +125,23 @@ export class VoidPortal
 
         this.game.overlay.show(() =>
         {
-            // Blood-red hell atmosphere
+            // Dark volcanic atmosphere — orange lava pop, not red wash
             this.game.weather?.override?.start?.(
-                { humidity: 0.15, electricField: 0.9, clouds: 0.85, wind: 0.45 },
+                { humidity: 0.2, electricField: 0.6, clouds: 0.7, wind: 0.3 },
                 0
             )
             this.game.dayCycles?.override?.start?.(
                 {
                     progress: 0.48,
-                    fogNearRatio: -0.35,
-                    fogFarRatio: 0.42,
-                    lightIntensity: 1.8,
-                    fogColorA: new THREE.Color('#1a0000'),
-                    fogColorB: new THREE.Color('#ff2200'),
-                    lightColor: new THREE.Color('#ff6633'),
-                    shadowColor: new THREE.Color('#330000'),
-                    revealColor: new THREE.Color('#ff4400'),
-                    revealIntensity: 8,
+                    fogNearRatio: -0.25,
+                    fogFarRatio: 0.48,
+                    lightIntensity: 1.6,
+                    fogColorA: new THREE.Color('#1a1520'),
+                    fogColorB: new THREE.Color('#3a2830'),
+                    lightColor: new THREE.Color('#ffaa66'),
+                    shadowColor: new THREE.Color('#1a1018'),
+                    revealColor: new THREE.Color('#ff8833'),
+                    revealIntensity: 6,
                 },
                 0
             )

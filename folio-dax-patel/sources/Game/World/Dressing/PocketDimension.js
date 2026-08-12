@@ -4,21 +4,27 @@ import { Game } from '../../Game.js'
 import { InteractivePoints } from '../../InteractivePoints.js'
 import { MeshDefaultMaterial } from '../../Materials/MeshDefaultMaterial.js'
 import {
+    HELL,
     hellMat,
     makeAshField,
-    makeBonePile,
+    makeBasaltCluster,
     makeDragScene,
-    makeFloatingLava,
+    makeHeatCrack,
     makeHellDragon,
     makeHellGate,
-    makeLavaPool,
-    makeThroneOfHell,
-    makeTorturePillar,
+    makeImp,
+    makeLavaBed,
+    makePurpleShroom,
+    makeScorchedTree,
+    makeStoneBridge,
+    makeStonePath,
+    makeStoneStairs,
+    makeVolcanoTemple,
 } from './HellProps.js'
 
 /**
- * Inferno pocket — lava, demons, dragon, throne of the King of Hell.
- * Sealed arena at (420, 0, 420). Ground Y = 0; camera focus Y stays 0 in parent space.
+ * Inferno — cute-fantasy-volcano layout.
+ * Grey stone roads over orange lava. Temple north-west, spawn south.
  */
 export class PocketDimension
 {
@@ -37,23 +43,19 @@ export class PocketDimension
         this.game.scene.add(this.group)
 
         this.physicsBodies = []
-        this.knockables = []
-        this.floaters = []
         this.lavaMeshes = []
         this.dragScenes = []
-        this.torturePosts = []
         this.ashField = null
         this.dragon = null
-        this.throne = null
+        this.temple = null
         this._savedFloorVisible = true
         this._savedWaterVisible = true
 
-        this.buildShell()
-        this.buildLavaRivers()
-        this.buildAshAndEmbers()
-        this.buildThroneCourt()
-        this.buildTortureRing()
-        this.buildDragParades()
+        this.buildArena()
+        this.buildPathNetwork()
+        this.buildTempleCourt()
+        this.buildLavaDecor()
+        this.buildPathLife()
         this.buildDragon()
         this.buildExitGate()
         this.buildPhysicsShell()
@@ -70,16 +72,6 @@ export class PocketDimension
         })
     }
 
-    mat(hex, opts = {})
-    {
-        return new MeshDefaultMaterial({
-            colorNode: color(hex),
-            hasWater: false,
-            hasFog: opts.hasFog ?? false,
-            hasReveal: false,
-        })
-    }
-
     w(x, y, z)
     {
         return {
@@ -89,155 +81,159 @@ export class PocketDimension
         }
     }
 
-    buildShell()
+    /** Add raised stone path + Rapier collider. */
+    addPath(x, z, length, width, yaw = 0)
     {
-        const R = PocketDimension.HALF + 14
-        const H = 18
+        const path = yaw === 0
+            ? makeStonePath(x, z, length, width, yaw)
+            : makeStoneBridge(x, z, length, width, yaw)
+        this.group.add(path)
 
-        // Cracked obsidian floor
-        const floor = new THREE.Mesh(
-            new THREE.BoxGeometry(52, 0.9, 52),
-            hellMat('#1a0808')
-        )
-        floor.position.set(0, -0.4, 0)
-        this.group.add(floor)
+        const h = path.userData.pathCollider?.deckH ?? 0.38
+        const cos = Math.abs(Math.cos(yaw))
+        const sin = Math.abs(Math.sin(yaw))
+        const hx = (length * cos + width * sin) * 0.5
+        const hz = (length * sin + width * cos) * 0.5
+        this.addFixedBody(this.w(x, h * 0.5, z), [ hx, h * 0.5, hz ])
+        return path
+    }
 
-        // Lava cracks in floor (flush decals)
-        const crackSpots = [
-            [0, 0, 4, 1.8], [-8, 6, 3, 1.2], [10, -5, 2.5, 1], [-12, -8, 3.5, 1.4],
-            [6, 12, 2, 0.9], [-5, -14, 2.8, 1.1], [14, 8, 2.2, 1],
-        ]
-        for(const [x, z, r] of crackSpots)
-        {
-            const crack = new THREE.Mesh(
-                new THREE.CylinderGeometry(r, r * 1.05, 0.04, 14),
-                hellMat('#ff3300', { emissive: true })
-            )
-            crack.position.set(x, 0.02, z)
-            this.group.add(crack)
-            this.lavaMeshes.push({ mesh: crack, phase: x + z })
-        }
+    buildArena()
+    {
+        const R = PocketDimension.HALF + 12
 
-        // Jagged rock walls
+        // Lava sea (orange/yellow — not flat red)
+        const lava = makeLavaBed(48, 48)
+        lava.position.y = 0
+        this.group.add(lava)
+        if(lava.userData.lavaPulse)
+            this.lavaMeshes.push(...lava.userData.lavaPulse)
+
+        // Volcanic rim wall
         const wall = new THREE.Mesh(
-            new THREE.CylinderGeometry(R, R * 1.05, H, 32, 1, true),
-            hellMat('#120404')
+            new THREE.CylinderGeometry(R, R * 1.03, 16, 28, 1, true),
+            hellMat(HELL.stoneEdge)
         )
-        wall.position.y = H * 0.5 - 0.5
+        wall.position.y = 6
         this.group.add(wall)
 
-        // Red-hot rim
-        const rim = new THREE.Mesh(
-            new THREE.TorusGeometry(R * 0.99, 0.45, 8, 40),
-            hellMat('#ff2200', { emissive: true })
+        const rimGlow = new THREE.Mesh(
+            new THREE.TorusGeometry(R * 0.99, 0.25, 6, 36),
+            hellMat(HELL.lavaDark, { glow: true, fog: false })
         )
-        rim.rotation.x = Math.PI / 2
-        rim.position.y = 0.1
-        this.group.add(rim)
+        rimGlow.rotation.x = Math.PI / 2
+        rimGlow.position.y = 0.05
+        this.group.add(rimGlow)
+        this.lavaMeshes.push({ mesh: rimGlow, phase: 0.5 })
 
-        // Smoky hell ceiling dome
+        // Smoky dome ceiling
         const ceil = new THREE.Mesh(
-            new THREE.SphereGeometry(R * 0.97, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.48),
-            hellMat('#0d0202')
+            new THREE.SphereGeometry(R * 0.96, 22, 10, 0, Math.PI * 2, 0, Math.PI * 0.45),
+            hellMat('#1a1520')
         )
-        ceil.position.y = 2
+        ceil.position.y = 3
         ceil.rotation.x = Math.PI
         this.group.add(ceil)
 
-        // Hanging rock spikes
-        for(let i = 0; i < 14; i++)
-        {
-            const a = (i / 14) * Math.PI * 2
-            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.5 + (i % 3), 5), hellMat('#2a1010'))
-            spike.position.set(Math.cos(a) * 15, 12 + (i % 4), Math.sin(a) * 15)
-            spike.rotation.x = Math.PI
-            spike.rotation.z = Math.sin(a) * 0.3
-            this.group.add(spike)
-        }
-
-        // Spawn bridge over lava moat
-        const bridge = new THREE.Mesh(new THREE.BoxGeometry(5, 0.25, 8), hellMat('#2a1515'))
-        bridge.position.set(0, 0.12, 16)
-        this.group.add(bridge)
-        this.addFixedBody(this.w(0, 0.2, 16), [ 2.5, 0.2, 4 ])
-    }
-
-    buildLavaRivers()
-    {
-        const pools = [
-            { x: -10, z: 4, r: 4.5 },
-            { x: 12, z: -6, r: 3.8 },
-            { x: -6, z: -12, r: 3.2 },
-            { x: 8, z: 10, r: 2.8 },
-            { x: 0, z: -18, r: 5 },
-        ]
-        for(const p of pools)
-        {
-            const pool = makeLavaPool(p.x, p.z, p.r)
-            this.group.add(pool)
-            if(pool.userData.lavaPulse)
-                this.lavaMeshes.push(pool.userData.lavaPulse)
-        }
-
-        const floats = [
-            { x: -8, y: 2.2, z: 6, s: 1.1 },
-            { x: 5, y: 3.5, z: -4, s: 0.85 },
-            { x: -3, y: 2.8, z: -10, s: 1.0 },
-            { x: 11, y: 4.2, z: 8, s: 0.7 },
-            { x: -14, y: 3.0, z: -2, s: 0.9 },
-        ]
-        for(const f of floats)
-        {
-            const chunk = makeFloatingLava(f.x, f.y, f.z, f.s)
-            this.group.add(chunk)
-            if(chunk.userData.float)
-                this.floaters.push(chunk.userData.float)
-        }
-    }
-
-    buildAshAndEmbers()
-    {
-        this.ashField = makeAshField(180, 24, 16)
+        this.ashField = makeAshField(90, 22, 14)
         this.group.add(this.ashField)
     }
 
-    buildThroneCourt()
+    /**
+     * Path network (reference layout):
+     *   [Temple NW] ←bridge← junction ← spine → [Spawn S] → [Exit gate]
+     *                      ↓
+     *                 east bridge → overlook
+     */
+    buildPathNetwork()
     {
-        this.throne = makeThroneOfHell()
-        this.throne.position.set(0, 0, -16)
-        this.group.add(this.throne)
-        this.addFixedBody(this.w(0, 0.6, -16), [ 5, 0.6, 4 ])
-        this.addFixedBody(this.w(0, 3, -16), [ 2.5, 3, 1 ])
+        // South spawn landing
+        this.addPath(0, 15, 6, 5.5, 0)
 
-        this.group.add(makeBonePile(-6, -12, 0.4))
-        this.group.add(makeBonePile(7, -13, -0.3))
-        this.group.add(makeBonePile(-4, -18, 0.8))
-    }
+        // Main spine (drive north toward temple)
+        this.addPath(0, -1, 4.2, 30, Math.PI / 2)
 
-    buildTortureRing()
-    {
-        const spots = [
-            [-16, 4], [16, 2], [-14, -6], [15, -8], [-8, 14], [10, 12],
-        ]
-        for(const [x, z] of spots)
+        // Junction plaza
+        this.addPath(0, -2, 7, 7, 0)
+
+        // West bridge → temple island
+        this.addPath(-7.5, -6, 11, 3.4, 0)
+        this.addPath(-14, -11, 8, 7, 0)
+
+        // Temple approach stairs
+        const stairs = makeStoneStairs(-10.5, -7.5, 4, 3.4, 0, 0.32)
+        this.group.add(stairs)
+        this.addFixedBody(this.w(-10.5, 0.64, -9.1), [ 1.7, 0.64, 1.8 ])
+
+        // East bridge + overlook platform
+        this.addPath(7.5, 1, 10, 3.2, 0)
+        this.addPath(14, 1, 6, 5.5, Math.PI / 2)
+
+        // Heat cracks on spine (glow under tiles)
+        for(const [x, z, yaw] of [
+            [0, 10, 0], [0, 4, Math.PI / 2], [0, -6, Math.PI / 2], [-5, -6, 0.3], [6, 1, -0.2],
+        ])
         {
-            const pillar = makeTorturePillar(x, z)
-            this.group.add(pillar)
-            if(pillar.userData.torture)
-                this.torturePosts.push(pillar.userData.torture)
-            this.addFixedBody(this.w(x, 1.75, z), [ 0.3, 1.75, 0.3 ])
+            const crack = makeHeatCrack(x, z, 1.4, yaw)
+            this.group.add(crack)
+            if(crack.userData.lavaPulse)
+                this.lavaMeshes.push(crack.userData.lavaPulse)
         }
     }
 
-    buildDragParades()
+    buildTempleCourt()
     {
-        const parades = [
-            { x: -6, z: 8, yaw: 0.6 },
-            { x: 8, z: 4, yaw: -1.2 },
-            { x: -10, z: -2, yaw: 2.1 },
-            { x: 5, z: -10, yaw: -0.4 },
+        this.temple = makeVolcanoTemple()
+        this.temple.position.set(-14, 0.38, -13)
+        this.temple.rotation.y = Math.PI * 0.08
+        this.group.add(this.temple)
+        this.addFixedBody(this.w(-14, 4, -13), [ 4.5, 4, 3.5 ])
+    }
+
+    buildLavaDecor()
+    {
+        // Basalt + shrooms only IN lava (off the roads)
+        const basaltSpots = [
+            [-11, 9], [11, 8], [-13, 3], [12, -7], [-9, -15], [10, -13], [-17, -2], [17, -3], [-8, 14], [9, 15],
         ]
-        for(const p of parades)
+        for(const [x, z] of basaltSpots)
+            this.group.add(makeBasaltCluster(x, z, 4 + (Math.abs(x) % 3)))
+
+        const shrooms = [ [-10, 7 ], [13, 5 ], [-15, -6 ], [11, -11 ] ]
+        for(const [x, z] of shrooms)
+            this.group.add(makePurpleShroom(x, z))
+    }
+
+    buildPathLife()
+    {
+        // Trees along path edges only
+        const trees = [
+            [-2.6, 11, 0.9], [2.6, 10, 1], [-2.8, 3, 0.85], [2.8, -4, 1.05],
+            [-3.2, -9, 0.95], [3, -11, 0.8], [-16, -10, 1.1], [-12, -15, 0.9], [15, 2, 1],
+        ]
+        for(const [x, z, s] of trees)
+            this.group.add(makeScorchedTree(x, z, s))
+
+        // Imps guarding the roads (reference red minions)
+        const imps = [
+            { x: 0, z: 12, yaw: Math.PI },
+            { x: -2.5, z: -1, yaw: 0.8 },
+            { x: 2.5, z: -3, yaw: -0.6 },
+            { x: -12, z: -9, yaw: 0.2 },
+            { x: 13, z: 2, yaw: -1.4 },
+        ]
+        for(const imp of imps)
+        {
+            const m = makeImp({ scale: 1, yaw: imp.yaw })
+            m.position.set(imp.x, 0.38, imp.z)
+            this.group.add(m)
+        }
+
+        // Two drag scenes on side platforms only
+        for(const p of [
+            { x: 14, z: 3, yaw: -1.2 },
+            { x: -11, z: -5, yaw: 0.5 },
+        ])
         {
             const scene = makeDragScene(p.x, p.z, p.yaw)
             this.group.add(scene)
@@ -259,9 +255,9 @@ export class PocketDimension
         this.group.add(gate)
         this.exitPortalMesh = gate.userData.exitPortal?.outer
         this.exitInner = gate.userData.exitPortal?.inner
-        this.addFixedBody(this.w(-3.5, 3, 20), [ 0.7, 3, 0.7 ])
-        this.addFixedBody(this.w(3.5, 3, 20), [ 0.7, 3, 0.7 ])
-        this.addFixedBody(this.w(0, 6.2, 20), [ 4.5, 0.6, 0.8 ])
+        this.addFixedBody(this.w(0, 0.2, 20), [ 3, 0.2, 2.5 ])
+        this.addFixedBody(this.w(-2.2, 2.6, 20), [ 0.45, 2.25, 0.45 ])
+        this.addFixedBody(this.w(2.2, 2.6, 20), [ 0.45, 2.25, 0.45 ])
     }
 
     buildPhysicsShell()
@@ -270,40 +266,29 @@ export class PocketDimension
         const ox = PocketDimension.ORIGIN.x
         const oy = PocketDimension.ORIGIN.y
         const oz = PocketDimension.ORIGIN.z
-
-        this.addFixedBody({ x: ox, y: oy - 0.4, z: oz }, [ H + 2, 0.4, H + 2 ], 'floor')
-
-        const wallH = 8
+        const wallH = 7
         const walls = [
             { x: ox, y: oy + wallH * 0.5, z: oz + H + 0.5, p: [ H + 2, wallH * 0.5, 0.5 ] },
             { x: ox, y: oy + wallH * 0.5, z: oz - H - 0.5, p: [ H + 2, wallH * 0.5, 0.5 ] },
             { x: ox + H + 0.5, y: oy + wallH * 0.5, z: oz, p: [ 0.5, wallH * 0.5, H + 2 ] },
             { x: ox - H - 0.5, y: oy + wallH * 0.5, z: oz, p: [ 0.5, wallH * 0.5, H + 2 ] },
         ]
-        for(const w of walls)
-            this.addFixedBody({ x: w.x, y: w.y, z: w.z }, w.p)
+        for(const wall of walls)
+            this.addFixedBody({ x: wall.x, y: wall.y, z: wall.z }, wall.p)
     }
 
     addFixedBody(position, halfExtents, category = 'object')
     {
-        const object = this.game.objects.add(
-            null,
-            {
-                type: 'fixed',
-                friction: 0.45,
-                restitution: 0.05,
-                position,
-                enabled: false,
-                colliders: [
-                    {
-                        shape: 'cuboid',
-                        parameters: halfExtents,
-                        position: { x: 0, y: 0, z: 0 },
-                        category,
-                    },
-                ],
-            }
-        )
+        const object = this.game.objects.add(null, {
+            type: 'fixed',
+            friction: 0.5,
+            restitution: 0.05,
+            position,
+            enabled: false,
+            colliders: [
+                { shape: 'cuboid', parameters: halfExtents, position: { x: 0, y: 0, z: 0 }, category },
+            ],
+        })
         const body = object?.physical?.body
         if(body)
         {
@@ -415,15 +400,15 @@ export class PocketDimension
     {
         if(!this.ashField?.userData?.ash)
             return
-        const { speeds, spread, height } = this.ashField.userData.ash
+        const { speeds, height } = this.ashField.userData.ash
         const pos = this.ashField.geometry.attributes.position
         for(let i = 0; i < speeds.length; i++)
         {
-            let y = pos.getY(i) + speeds[i] * 0.012
+            let y = pos.getY(i) + speeds[i] * 0.01
             if(y > height)
                 y = Math.random() * 2
             pos.setY(i, y)
-            pos.setX(i, pos.getX(i) + Math.sin(elapsed * 0.5 + i) * 0.008)
+            pos.setX(i, pos.getX(i) + Math.sin(elapsed * 0.4 + i) * 0.006)
         }
         pos.needsUpdate = true
     }
@@ -436,20 +421,19 @@ export class PocketDimension
         d.angle += d.orbitSpeed * 0.016
         this.dragon.position.set(
             Math.cos(d.angle) * d.orbitRadius,
-            d.orbitY + Math.sin(elapsed * 0.8) * 1.2,
-            Math.sin(d.angle) * d.orbitRadius * 0.65 - 4
+            d.orbitY + Math.sin(elapsed * 0.7) * 1,
+            Math.sin(d.angle) * d.orbitRadius * 0.6 - 2
         )
         this.dragon.rotation.y = -d.angle + Math.PI * 0.5
-        d.wingL.rotation.z = 0.3 + Math.sin(elapsed * 3.5) * 0.55
-        d.wingR.rotation.z = -0.3 - Math.sin(elapsed * 3.5) * 0.55
+        d.wingL.rotation.z = 0.25 + Math.sin(elapsed * 3.2) * 0.5
+        d.wingR.rotation.z = -0.25 - Math.sin(elapsed * 3.2) * 0.5
         if(d.fireGroup)
         {
-            d.fireGroup.rotation.y = Math.sin(elapsed * 4) * 0.15
             for(let i = 0; i < d.fireGroup.children.length; i++)
             {
                 const ember = d.fireGroup.children[i]
-                ember.position.x = 0.2 + i * 0.35 + Math.sin(elapsed * 6 + i) * 0.1
-                ember.scale.setScalar(0.8 + Math.sin(elapsed * 8 + i) * 0.35)
+                ember.position.x = 0.15 + i * 0.3 + Math.sin(elapsed * 5 + i) * 0.08
+                ember.scale.setScalar(0.75 + Math.sin(elapsed * 7 + i) * 0.3)
             }
         }
     }
@@ -479,43 +463,25 @@ export class PocketDimension
         {
             if(!l.mesh)
                 continue
-            const pulse = 0.85 + Math.sin(elapsed * 2.2 + l.phase) * 0.15
+            const pulse = 0.9 + Math.sin(elapsed * 1.8 + (l.phase ?? 0)) * 0.1
             l.mesh.scale.set(pulse, 1, pulse)
         }
 
-        for(const f of this.floaters)
-        {
-            if(!f.mesh)
-                continue
-            f.mesh.position.y = f.baseY + Math.sin(elapsed * 1.4 + f.phase) * f.amp
-            f.mesh.position.x += Math.sin(elapsed * 0.6 + f.phase) * f.drift * 0.004
-        }
+        if(this.temple?.userData?.sigil)
+            this.temple.userData.sigil.rotation.z = elapsed * 0.4
 
         for(const d of this.dragScenes)
         {
-            d.demon.position.x = Math.sin(elapsed * 0.4 + d.phase) * 0.15
-            d.victim.position.z = 0.6 + Math.sin(elapsed * 0.4 + d.phase) * 0.25
-            d.victim.rotation.z = Math.sin(elapsed * 1.2 + d.phase) * 0.12
-        }
-
-        for(const t of this.torturePosts)
-            t.victim.rotation.y = Math.sin(elapsed * 0.8 + t.phase) * 0.2
-
-        if(this.throne?.userData?.throneFlames)
-        {
-            for(const flame of this.throne.userData.throneFlames)
-            {
-                flame.scale.y = 0.8 + Math.sin(elapsed * 5) * 0.35
-                flame.rotation.y = elapsed * 2
-            }
+            d.imp.position.x = Math.sin(elapsed * 0.35 + d.phase) * 0.12
+            d.victim.position.z = 0.5 + Math.sin(elapsed * 0.35 + d.phase) * 0.2
         }
 
         this._tickAsh(elapsed)
         this._tickDragon(elapsed)
 
         if(this.exitPortalMesh)
-            this.exitPortalMesh.rotation.z = -elapsed * 1.4
+            this.exitPortalMesh.rotation.z = -elapsed * 1.2
         if(this.exitInner)
-            this.exitInner.rotation.z = elapsed * 2.2
+            this.exitInner.rotation.z = elapsed * 1.8
     }
 }
