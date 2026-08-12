@@ -2,13 +2,17 @@ import * as THREE from 'three/webgpu'
 import { Game } from '../../Game.js'
 import { InteractivePoints } from '../../InteractivePoints.js'
 import { VoxelPatron, vibeMat } from './VoxelPatron.js'
-import { makeDockPlank, makeDolphin, makeDuck, makeFencePost, makeFishingRod, makeReed, makeSheep } from './ToyCritters.js'
+import { makeDockPlank, makeDolphin, makeDuck, makeFenceRun, makeReedClump, makeSheep } from './ToyCritters.js'
 
 /**
- * River / nadi shore north of beach — sheep, dolphins, fishing, grazing life.
+ * River / nadi shore — composed vignettes (not random scatter).
+ * Pasture flock · dock fishing · picnic · quiet water life.
  */
 export class RiverShore
 {
+    /** Pasture clear center — matches Terrain.riverClearCenter */
+    static CLEAR = { x: -42, z: 80.5 }
+
     constructor()
     {
         this.game = Game.getInstance()
@@ -20,11 +24,14 @@ export class RiverShore
         this.patrons = []
         this.sheepStates = []
 
-        this.buildNorthBank()
-        this.buildChannelFinger()
-        this.buildFarWestPatch()
-        this.buildDolphinPod()
+        this.buildPastureFlock()
+        this.buildDockScene()
+        this.buildPicnicCorner()
+        this.buildQuietWater()
         this.setInteract()
+        this.clearRiverPad()
+        this.game.ticker.wait(30, () => this.clearRiverPad())
+        this.game.ticker.wait(120, () => this.clearRiverPad())
 
         this.group.traverse((child) =>
         {
@@ -37,154 +44,136 @@ export class RiverShore
         })
     }
 
-    buildNorthBank()
+    /** Kill bushes / flowers / trees on the pasture so props read clean. */
+    clearRiverPad()
     {
-        const sheepSpots = [
-            { x: -58, z: 83, yaw: 0.4, scale: 1.05, wool: '#f8f4ec' },
-            { x: -52, z: 81, yaw: -0.8, scale: 0.95, wool: '#ebe4d8' },
-            { x: -48, z: 79, yaw: 1.2, scale: 1.1, wool: '#f5f0e6' },
-            { x: -42, z: 80, yaw: -0.3, scale: 0.9, wool: '#ffffff' },
-            { x: -38, z: 82, yaw: 0.9, scale: 1.0, wool: '#e8dfd0' },
-            { x: -32, z: 79, yaw: -1.1, scale: 0.85, wool: '#f5f0e6' },
-            { x: -22, z: 78, yaw: 0.5, scale: 1.0, wool: '#f8f4ec' },
-            { x: -14, z: 76, yaw: -0.6, scale: 0.92, wool: '#ebe4d8' },
-            { x: -6, z: 75, yaw: 1.4, scale: 1.05, wool: '#f5f0e6' },
-            { x: 2, z: 77, yaw: -0.2, scale: 0.88, wool: '#ffffff' },
-            { x: 8, z: 80, yaw: 0.7, scale: 1.0, wool: '#e8dfd0' },
+        const C = RiverShore.CLEAR
+        const spots = [
+            { x: C.x, z: C.z, r: 16 },
+            { x: -52, z: 81, r: 7 },
+            { x: -46, z: 84, r: 6 },
+            { x: -34, z: 78.5, r: 6 },
         ]
-        for(const s of sheepSpots)
+        const world = this.game.world
+        for(const s of spots)
+        {
+            const center = { x: s.x, z: s.z }
+            world?.bushes?.foliage?.hideNear?.(center, s.r)
+            world?.flowers?.hideNear?.(center, s.r)
+            world?.birchTrees?.hideNear?.(center, s.r * 0.7)
+            world?.oakTrees?.hideNear?.(center, s.r * 0.7)
+            world?.cherryTrees?.hideNear?.(center, s.r * 0.7)
+        }
+    }
+
+    /**
+     * Vignette A — tight sheep flock + hay + shepherd + road fence.
+     * One cluster, not a sheep highway.
+     */
+    buildPastureFlock()
+    {
+        const flock = [
+            { x: -54.2, z: 80.8, yaw: 0.5, scale: 1.05, wool: '#f8f4ec' },
+            { x: -52.6, z: 81.6, yaw: -0.9, scale: 0.95, wool: '#ebe4d8' },
+            { x: -53.4, z: 79.6, yaw: 1.3, scale: 1.0, wool: '#f5f0e6' },
+            { x: -51.2, z: 80.2, yaw: -0.2, scale: 0.9, wool: '#ffffff' },
+        ]
+        for(const s of flock)
             this.addSheep(s)
 
-        const reedLine = [ -60, -56, -50, -44, -36, -30, -24, -18, -12, -4, 4, 10 ]
-        for(let i = 0; i < reedLine.length; i++)
-        {
-            const x = reedLine[i]
-            const z = 84.5 + (i % 3) * 0.4
-            const h = 1.0 + (i % 4) * 0.25
-            this.group.add(makeReed(x, z, h))
-            if(i % 2 === 0)
-                this.group.add(makeReed(x + 0.6, z + 0.3, h * 0.85))
-        }
+        this.buildHayBale(-55.2, 79.4)
 
-        for(let i = 0; i < 5; i++)
-            this.group.add(makeFencePost(-55 + i * 3.2, 82.5, 0.15))
+        // Fence along road edge only (reads as boundary, not debris)
+        this.group.add(makeFenceRun(-56.5, 82.2, -49.5, 81.6, 4))
 
-        const dock = makeDockPlank(-46, 84, 0.35, 4.2)
-        this.group.add(dock)
-        this.addFixedCollider(-46, 0.25, 84, [ 2.1, 0.15, 0.55 ])
-
-        const ducks = [
-            { x: -58, z: 85.5, body: '#ffe566' },
-            { x: -54, z: 86, body: '#fff0a0' },
-            { x: -46, z: 84.8, body: '#ffe566' },
-            { x: -36, z: 83.5, body: '#ffd700' },
-            { x: -26, z: 84, body: '#ffe566' },
-            { x: -16, z: 82, body: '#fff0a0' },
-            { x: -6, z: 81, body: '#ffe566' },
-            { x: 4, z: 83, body: '#ffd700' },
-        ]
-        for(const d of ducks)
-            this.addDuck(d)
-
-        // Standing shepherd on pasture
         this.addPatron({
             name: 'shepherd',
-            position: { x: -50, y: 0.72, z: 80.5 },
-            yaw: 0.9,
+            position: { x: -50.4, y: 0, z: 79.8 },
+            yaw: -1.8,
             drink: 'chai',
             outfit: 'olive',
             phase: 0.3,
             pose: 'standing',
         })
+    }
 
-        // Picnic — lounger pose on blanket
+    /**
+     * Vignette B — dock hero: fisher + reed clumps at water corners + duck raft.
+     */
+    buildDockScene()
+    {
+        const dockX = -46
+        const dockZ = 84.2
+        const dockYaw = 0.35
+
+        const dock = makeDockPlank(dockX, dockZ, dockYaw, 4.0)
+        this.group.add(dock)
+        this.addFixedCollider(dockX, 0.25, dockZ, [ 2.0, 0.15, 0.55 ])
+
+        // Fisher sits on dock deck (stool + rod from VoxelPatron)
+        this.addPatron({
+            name: 'dockFisher',
+            position: { x: dockX + 0.15, y: 0.32, z: dockZ - 0.05 },
+            yaw: dockYaw,
+            drink: 'coffee',
+            outfit: 'teal',
+            phase: 2.6,
+            pose: 'fishing',
+        })
+
+        // Reeds only at dock water corners — two clumps, not a dotted line
+        this.group.add(makeReedClump(dockX - 2.4, dockZ + 1.6))
+        this.group.add(makeReedClump(dockX + 2.2, dockZ + 1.3, '#456b4a'))
+
+        // Duck raft just off the dock (tight triangle)
+        const ducks = [
+            { x: dockX - 1.2, z: dockZ + 2.0, body: '#ffe566', yaw: 0.4 },
+            { x: dockX + 0.3, z: dockZ + 2.4, body: '#fff0a0', yaw: -0.6 },
+            { x: dockX + 1.4, z: dockZ + 1.8, body: '#ffd700', yaw: 1.1 },
+        ]
+        for(const d of ducks)
+            this.addDuck(d)
+
+        this.buildWaterLily(dockX - 0.4, dockZ + 2.8)
+        this.buildWaterLily(dockX + 1.8, dockZ + 2.5)
+    }
+
+    /**
+     * Vignette C — picnic pad + one lounger + shore log. Leave space around it.
+     */
+    buildPicnicCorner()
+    {
+        const px = -34
+        const pz = 78.3
+
+        this.buildPicnicBlanket(px, pz)
+
         this.addPatron({
             name: 'riverPicnic',
-            position: { x: -34, y: 0.38, z: 78.2 },
-            yaw: -1.4,
+            position: { x: px + 0.15, y: 0.14, z: pz - 0.15 },
+            yaw: -1.2,
             drink: 'coffee',
             outfit: 'sand',
             phase: 1.8,
             pose: 'lounger',
         })
 
-        // Fisher on log dock
-        this.addPatron({
-            name: 'dockFisher',
-            position: { x: -45.5, y: 0.42, z: 83.2 },
-            yaw: 0.35,
-            drink: 'coffee',
-            outfit: 'teal',
-            phase: 2.6,
-            pose: 'fishing',
-        })
-        const rodDock = makeFishingRod(0.35)
-        rodDock.position.set(-45.5, 0.42, 83.2)
-        this.group.add(rodDock)
+        // One curious sheep near picnic — not on the blanket
+        this.addSheep({ x: px - 2.6, z: pz + 1.2, yaw: 0.8, scale: 0.92, wool: '#e8dfd0' })
 
-        this.buildPicnicBlanket(-34, 78.5)
-        this.buildHayBale(-54, 80)
-        this.buildHayBale(-40, 81.5)
-        this.buildWaterLily(-48, 85.2)
-        this.buildWaterLily(-28, 83.8)
-        this.buildWaterLily(-8, 82.5)
-
-        // Shore bench log
-        const bench = makeDockPlank(-38, 79.5, 1.1, 2.4)
+        const bench = makeDockPlank(px + 3.2, pz + 0.8, 1.15, 2.2)
         this.group.add(bench)
+        this.addFixedCollider(px + 3.2, 0.25, pz + 0.8, [ 1.2, 0.2, 0.55 ])
     }
 
-    buildChannelFinger()
-    {
-        const sheep = [
-            { x: -18, z: 55, yaw: 0.6, scale: 0.95 },
-            { x: -12, z: 57, yaw: -0.4, scale: 1.0 },
-            { x: -4, z: 54, yaw: 1.1, scale: 0.9 },
-        ]
-        for(const s of sheep)
-            this.addSheep(s)
-
-        const reedXs = [ -20, -14, -8, -2, 4 ]
-        for(let i = 0; i < reedXs.length; i++)
-            this.group.add(makeReed(reedXs[i], 58.5, 0.9 + (i % 3) * 0.15))
-
-        for(const d of [
-            { x: -14, z: 56.5 },
-            { x: -8, z: 57.2 },
-            { x: 2, z: 55.5 },
-        ])
-            this.addDuck(d)
-
-        this.addPatron({
-            name: 'channelAngler',
-            position: { x: -15.5, y: 0.4, z: 52.8 },
-            yaw: 1.55,
-            drink: 'coffee',
-            outfit: 'cocoa',
-            phase: 0.9,
-            pose: 'fishing',
-        })
-        const rodChannel = makeFishingRod(1.55)
-        rodChannel.position.set(-15.5, 0.4, 52.8)
-        this.group.add(rodChannel)
-    }
-
-    buildFarWestPatch()
-    {
-        this.addSheep({ x: -66, z: 85, yaw: -0.5, scale: 1.0, wool: '#f5f0e6' })
-        this.addSheep({ x: -62, z: 83, yaw: 0.8, scale: 0.92, wool: '#ebe4d8' })
-        this.addDuck({ x: -64, z: 86.5, body: '#ffe566' })
-        this.group.add(makeReed(-68, 86, 1.3))
-        this.group.add(makeReed(-65, 85.5, 1.1))
-    }
-
-    buildDolphinPod()
+    /**
+     * Quiet nadi life — one dolphin pair + one far reed clump. No spam.
+     */
+    buildQuietWater()
     {
         const pod = [
-            { x: -52, z: 87, yaw: 0.3, scale: 1.1, phase: 0 },
-            { x: -48, z: 86.2, yaw: -0.2, scale: 0.95, phase: 1.2 },
-            { x: -30, z: 85, yaw: 0.5, scale: 1.0, phase: 2.4 },
-            { x: -8, z: 83.5, yaw: -0.4, scale: 0.9, phase: 0.8 },
+            { x: -50, z: 87.2, yaw: 0.4, scale: 1.05, phase: 0 },
+            { x: -47.2, z: 86.6, yaw: -0.25, scale: 0.92, phase: 1.4 },
         ]
         for(const d of pod)
         {
@@ -201,10 +190,14 @@ export class RiverShore
                 baseZ: d.z,
                 phase: d.phase,
                 amp: 0.08,
-                drift: 0.35,
+                drift: 0.28,
                 leap: true,
             })
         }
+
+        // Far west accent only — one clump + one sheep silhouette
+        this.group.add(makeReedClump(-62, 85.5))
+        this.addSheep({ x: -60.5, z: 83.2, yaw: -0.4, scale: 0.95, wool: '#f5f0e6' })
     }
 
     addSheep(s)
@@ -242,7 +235,7 @@ export class RiverShore
             baseZ: d.z,
             phase: (d.x + d.z) * 0.07,
             amp: 0.04,
-            drift: 0.12,
+            drift: 0.08,
         })
     }
 
@@ -255,13 +248,24 @@ export class RiverShore
 
     buildPicnicBlanket(x, z)
     {
-        const blanket = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.04, 1.8), vibeMat('#ff6b35', true))
-        blanket.position.set(x, 0.04, z)
-        const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 0.35), vibeMat('#7b5cff', true))
-        stripe.position.set(x, 0.06, z + 0.4)
-        const basket = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.28, 0.35), vibeMat('#8b6914', true))
-        basket.position.set(x - 0.8, 0.18, z - 0.3)
-        this.group.add(blanket, stripe, basket)
+        const platform = new THREE.Mesh(
+            new THREE.BoxGeometry(2.4, 0.12, 1.8),
+            vibeMat('#ff6b35', true)
+        )
+        platform.position.set(x, 0.06, z)
+        const stripe = new THREE.Mesh(
+            new THREE.BoxGeometry(2.4, 0.04, 0.35),
+            vibeMat('#7b5cff', true)
+        )
+        stripe.position.set(x, 0.14, z + 0.4)
+        const basket = new THREE.Mesh(
+            new THREE.BoxGeometry(0.35, 0.28, 0.35),
+            vibeMat('#8b6914', true)
+        )
+        basket.position.set(x - 0.8, 0.28, z - 0.3)
+        this.group.add(platform, stripe, basket)
+        this.addFixedCollider(x, 0.12, z, [ 1.25, 0.12, 0.95 ])
+        this.addFixedCollider(x - 0.8, 0.28, z - 0.3, [ 0.22, 0.2, 0.22 ])
     }
 
     buildHayBale(x, z)
@@ -290,7 +294,7 @@ export class RiverShore
             phase: x * 0.1,
             amp: 0.02,
             child: flower,
-            drift: 0.04,
+            drift: 0.03,
         })
     }
 
@@ -368,7 +372,7 @@ export class RiverShore
             () =>
             {
                 this.game.notifications.show(
-                    `<div class="top"><div class="title">River Bank</div></div><div class="bottom"><div class="description">Sheep · fishing on the log dock · dolphins in the nadi.</div></div>`,
+                    `<div class="top"><div class="title">River Bank</div></div><div class="bottom"><div class="description">Sheep flock · dock fishing · picnic on the shore.</div></div>`,
                     'river-shore',
                     2.8,
                     null,

@@ -78,9 +78,14 @@ export class Terrain
 
         // Beach club clear — kill grass blades around BowlingBeach origin
         this.beachClearCenter = uniform(vec2(-27.398, 74.268))
-        this.beachClearInner = uniform(6.5)
-        this.beachClearOuter = uniform(9.5)
+        this.beachClearInner = uniform(8.5)
+        this.beachClearOuter = uniform(12.5)
         this.beachSandColor = uniform(color('#e8c47a'))
+
+        // River bank pasture — elliptical strip so sheep/dock aren't buried in tall grass
+        this.riverClearCenter = uniform(vec2(-42, 80.5))
+        this.riverClearInner = uniform(7.5)
+        this.riverClearOuter = uniform(11.5)
 
         const worldPositionToUvNode = Fn(([position]) =>
         {
@@ -103,6 +108,12 @@ export class Terrain
             const beachDist = length(position.sub(this.beachClearCenter))
             const keepGrass = smoothstep(this.beachClearInner, this.beachClearOuter, beachDist)
             data.g.mulAssign(keepGrass)
+
+            // Soft-clear grass on river pasture (stretch X along shore)
+            const riverOff = position.sub(this.riverClearCenter)
+            const riverDist = length(vec2(riverOff.x.mul(0.42), riverOff.y.mul(1.05)))
+            const keepRiverGrass = smoothstep(this.riverClearInner, this.riverClearOuter, riverDist)
+            data.g.mulAssign(keepRiverGrass)
 
             return data
         })
@@ -131,6 +142,8 @@ export class Terrain
             this.game.debug.addThreeColorBinding(this.debugPanel, this.beachSandColor.value, 'beachSand')
             this.debugPanel.addBinding(this.beachClearInner, 'value', { label: 'beachInner', min: 2, max: 20, step: 0.1 })
             this.debugPanel.addBinding(this.beachClearOuter, 'value', { label: 'beachOuter', min: 3, max: 25, step: 0.1 })
+            this.debugPanel.addBinding(this.riverClearInner, 'value', { label: 'riverInner', min: 2, max: 20, step: 0.1 })
+            this.debugPanel.addBinding(this.riverClearOuter, 'value', { label: 'riverOuter', min: 3, max: 25, step: 0.1 })
         }
     }
 
