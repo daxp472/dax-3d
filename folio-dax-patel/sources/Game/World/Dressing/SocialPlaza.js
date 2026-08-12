@@ -22,7 +22,7 @@ export class SocialPlaza
         // North apron edge — clear of baguira/boy/sudo (~26,-18)
         this.addPatron({
             name: 'socialFanA',
-            position: { x: 22.4, y: 0.72, z: -14.6 },
+            position: { x: 22.4, y: 0, z: -14.6 },
             yaw: 0.6,
             drink: 'coffee',
             outfit: 'cocoa',
@@ -31,7 +31,7 @@ export class SocialPlaza
         })
         this.addPatron({
             name: 'socialFanB',
-            position: { x: 29.6, y: 0.72, z: -14.9 },
+            position: { x: 29.6, y: 0, z: -14.9 },
             yaw: -1.0,
             drink: 'chai',
             outfit: 'sand',
@@ -42,7 +42,7 @@ export class SocialPlaza
         // Between youtube (30.9,-24.2) and onlyfans (39.6,-33.2) — west of OF
         this.addPatron({
             name: 'ofCorner',
-            position: { x: 36.2, y: 0.72, z: -30.4 },
+            position: { x: 36.2, y: 0, z: -30.4 },
             yaw: 2.4,
             drink: 'coffee',
             outfit: 'olive',

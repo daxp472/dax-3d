@@ -5,7 +5,7 @@ import { VoxelPatron, vibeMat } from './VoxelPatron.js'
 
 /**
  * Diner life at bowling — chai/coffee patrons on booths + stool table.
- * Custom Dax vibe (not stock Bruno empty furniture).
+ * Seat Y tuned to mapItemLocations couch (y≈1.11) / stool (y≈0.82) tops.
  */
 export class BowlingLounge
 {
@@ -34,34 +34,37 @@ export class BowlingLounge
         return patron
     }
 
-    /** Striped booths at known diner tables (z≈59.5). */
+    /**
+     * Couches at (−1.18 / 2.49 / 8.5, 1.11, 59.47).
+     * Sit ON cushion — group Y ≈ seat top − small lift so hips clear mesh.
+     */
     placeBoothPatrons()
     {
-        // Table 1 — face each other across table (couches y≈1.11)
+        // Couch 0 — west of table (−1.18) · face table
         this.addPatron({
             name: 'boothChai',
-            position: { x: -0.55, y: 0.95, z: 59.15 },
-            yaw: Math.PI * 0.08,
+            position: { x: -1.05, y: 1.05, z: 59.47 },
+            yaw: Math.PI * 0.5,
             drink: 'chai',
             outfit: 'cocoa',
             phase: 0.4,
             pose: 'booth',
         })
+        // Couch 1 — east of table (2.49)
         this.addPatron({
             name: 'boothCoffee',
-            position: { x: 1.85, y: 0.95, z: 59.85 },
-            yaw: Math.PI * 1.08,
+            position: { x: 2.35, y: 1.05, z: 59.47 },
+            yaw: -Math.PI * 0.5,
             drink: 'coffee',
             outfit: 'sand',
             phase: 1.7,
             pose: 'booth',
         })
-
-        // Table 2 — one chill regular
+        // Couch 2 — solo (8.5)
         this.addPatron({
             name: 'boothSolo',
-            position: { x: 9.15, y: 0.95, z: 59.2 },
-            yaw: 0.2,
+            position: { x: 8.65, y: 1.05, z: 59.47 },
+            yaw: -Math.PI * 0.45,
             drink: 'chai',
             outfit: 'olive',
             phase: 2.9,
@@ -69,13 +72,12 @@ export class BowlingLounge
         })
     }
 
-    /** Round high-top / stool cluster near bar + plaza filler. */
+    /** Stools world ≈ (4.82 / 7.28, 0.82, 73.8) — seat top ≈ 0.95–1.0. */
     placeStoolPatrons()
     {
-        // Real bowling stools world ≈ (4.7–7.3, 0.82, 73.8–78.1)
         this.addPatron({
             name: 'stoolDev',
-            position: { x: 4.82, y: 0.85, z: 73.83 },
+            position: { x: 4.82, y: 0.92, z: 73.83 },
             yaw: Math.PI * 0.35,
             drink: 'coffee',
             outfit: 'pearl',
@@ -84,7 +86,7 @@ export class BowlingLounge
         })
         this.addPatron({
             name: 'stoolFriend',
-            position: { x: 7.28, y: 0.85, z: 73.80 },
+            position: { x: 7.28, y: 0.92, z: 73.80 },
             yaw: -Math.PI * 0.9,
             drink: 'chai',
             outfit: 'mango',
@@ -95,7 +97,6 @@ export class BowlingLounge
 
     placeTableExtras()
     {
-        // Chai kettle on first table
         const kettle = new THREE.Group()
         kettle.position.set(0.65, 1.22, 59.5)
         const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.22, 10), vibeMat('#c9a227'))
@@ -108,7 +109,6 @@ export class BowlingLounge
         this.group.add(kettle)
         this.props.push(kettle)
 
-        // Menu stand
         const menu = new THREE.Group()
         menu.position.set(10.33, 1.22, 59.5)
         const board = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.28, 0.04), vibeMat('#f4e4bc'))
@@ -117,7 +117,6 @@ export class BowlingLounge
         menu.add(board, stand)
         this.group.add(menu)
 
-        // Neon under-glow discs (custom — Dax purple) near stool table
         for(const [x, z] of [[5.5, 74.2], [7.6, 75.4]])
         {
             const glow = new THREE.Mesh(

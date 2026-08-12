@@ -134,7 +134,7 @@ export class GamerCornerDressing
         // One coder vibing near the peripherals
         const patron = new VoxelPatron({
             name: 'gamerDev',
-            position: { x: -0.4, y: 0.55, z: 1.4 },
+            position: { x: -0.4, y: 0.85, z: 1.4 },
             yaw: Math.PI * 1.15,
             drink: 'coffee',
             outfit: 'sand',

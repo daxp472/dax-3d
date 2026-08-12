@@ -192,7 +192,7 @@ export class PocketDimension
         {
             const patron = new VoxelPatron({
                 name: s.name,
-                position: { x: s.x, y: 0.72, z: s.z },
+                position: { x: s.x, y: 0, z: s.z },
                 yaw: s.yaw,
                 outfit: s.outfit,
                 drink: s.drink,

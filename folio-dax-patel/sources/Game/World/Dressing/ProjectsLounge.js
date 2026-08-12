@@ -22,7 +22,7 @@ export class ProjectsLounge
         // mainTablePhysicalDynamic world ≈ (36.61, 0.53, 12.15)
         const cx = 36.61
         const cz = 12.15
-        const seatY = 0.78
+        const seatY = 0.92
 
         this.addPatron({
             name: 'projDev',

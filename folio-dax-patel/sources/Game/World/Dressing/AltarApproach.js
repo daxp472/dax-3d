@@ -41,7 +41,7 @@ export class AltarApproach
         // Witness off west shoulder
         this.addPatron({
             name: 'altarWitness',
-            position: { x: 71.6, y: 0.55, z: -18.4 },
+            position: { x: 71.6, y: 0, z: -18.4 },
             yaw: 0.85,
             drink: 'chai',
             outfit: 'pearl',
