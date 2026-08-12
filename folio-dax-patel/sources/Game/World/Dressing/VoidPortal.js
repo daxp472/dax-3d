@@ -115,8 +115,8 @@ export class VoidPortal
         this.game.inputs.filters.delete('wandering')
         this.game.inputs.filters.add('cinematic')
 
-        this.game.notifications.show(
-            `<div class="top"><div class="title">Inferno</div></div><div class="bottom"><div class="description">The pit opens. Lava, demons, and the King await below…</div></div>`,
+            this.game.notifications.show(
+                `<div class="top"><div class="title">Inferno</div></div><div class="bottom"><div class="description">Drive the stone road north. Exit only at the far gateway — press interact.</div></div>`,
             'void-portal',
             2.5,
             null,
@@ -240,14 +240,26 @@ export class VoidPortal
 
         if(this.inDimension)
         {
-            // Fell through hell floor somehow → respawn in arena
-            if(player.y < PocketDimension.ORIGIN.y - 6)
+            const ox = PocketDimension.ORIGIN.x
+            const oz = PocketDimension.ORIGIN.z
+            const lx = player.x - ox
+            const lz = player.z - oz
+
+            // Fell through floor → respawn on entry path (never boot to main world)
+            if(player.y < PocketDimension.ORIGIN.y - 1.5)
             {
                 const spawn = this.dimension.getSpawn()
                 this.game.physicalVehicle.moveTo(spawn.position, spawn.rotation)
             }
-            if(this.dimension.isNearExit(player, 3.2))
-                this.exitDimension()
+
+            // Out of bounds → respawn on path
+            if(Math.abs(lx) > 22 || Math.abs(lz) > 22)
+            {
+                const spawn = this.dimension.getSpawn()
+                this.game.physicalVehicle.moveTo(spawn.position, spawn.rotation)
+            }
+
+            // Exit ONLY via interact at north gateway — no proximity auto-teleport
         }
     }
 }

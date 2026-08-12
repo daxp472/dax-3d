@@ -184,6 +184,9 @@ Do not put Beach Club `InteractivePoints` on top of loungers — the Enter/A key
 - Portal mouth stays clear of altar mesh center `(75.34, −27.95)`.
 - VoidPortal failure is non-fatal — World continues.
 - Enter sets blood-red fog override; exit restores day cycle.
+- **Exit is interact-only** at north gateway (`EXIT_Z = -20`). Never auto-teleport on proximity.
+- **Entry** spawns south (`ENTRY_Z = 16`). Full arena floor collider prevents fall-through to main world.
+- Gobkit CC0 GLBs (`hellMinionGuard/King/Flyer`) for denizens — not procedural cartoons.
 
 ---
 

@@ -51,17 +51,17 @@ export function makeLavaBed(w, d)
         new THREE.BoxGeometry(w, 0.2, d),
         hellMat(HELL.lavaDeep, { glow: true, fog: false })
     )
-    deep.position.y = -0.18
+    deep.position.y = -0.28
     const mid = new THREE.Mesh(
-        new THREE.BoxGeometry(w * 0.98, 0.08, d * 0.98),
+        new THREE.BoxGeometry(w * 0.98, 0.12, d * 0.98),
         hellMat(HELL.lavaMid, { glow: true, fog: false })
     )
-    mid.position.y = -0.08
+    mid.position.y = -0.18
     const bright = new THREE.Mesh(
-        new THREE.BoxGeometry(w * 0.92, 0.04, d * 0.92),
+        new THREE.BoxGeometry(w * 0.94, 0.06, d * 0.94),
         hellMat(HELL.lavaBright, { glow: true, fog: false })
     )
-    bright.position.y = -0.04
+    bright.position.y = -0.1
     g.add(deep, mid, bright)
     g.userData.lavaPulse = [
         { mesh: mid, phase: 0 },
@@ -77,7 +77,7 @@ export function makeStonePath(x, z, length, width, yaw = 0)
     g.position.set(x, 0, z)
     g.rotation.y = yaw
 
-    const deckH = 0.38
+    const deckH = 0.55
     const deck = new THREE.Mesh(
         new THREE.BoxGeometry(length, deckH, width),
         hellMat(HELL.stone)

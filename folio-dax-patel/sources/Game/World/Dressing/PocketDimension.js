@@ -1,36 +1,33 @@
 import * as THREE from 'three/webgpu'
-import { color } from 'three/tsl'
 import { Game } from '../../Game.js'
 import { InteractivePoints } from '../../InteractivePoints.js'
-import { MeshDefaultMaterial } from '../../Materials/MeshDefaultMaterial.js'
+import { placeHellMinion, makeInfernoGateway } from './HellAssets.js'
 import {
     HELL,
     hellMat,
     makeAshField,
     makeBasaltCluster,
-    makeDragScene,
     makeHeatCrack,
     makeHellDragon,
-    makeHellGate,
-    makeImp,
     makeLavaBed,
     makePurpleShroom,
     makeScorchedTree,
-    makeStoneBridge,
     makeStonePath,
     makeStoneStairs,
     makeVolcanoTemple,
 } from './HellProps.js'
 
 /**
- * Inferno — cute-fantasy-volcano layout.
- * Grey stone roads over orange lava. Temple north-west, spawn south.
+ * Inferno — stone roads over visible lava. Entry SOUTH, exit NORTH (interact only).
+ * Full physics floor so the car never falls through to main world.
  */
 export class PocketDimension
 {
     static ORIGIN = new THREE.Vector3(420, 0, 420)
     static HALF = 24
     static TITLE = 'Inferno'
+  static ENTRY_Z = 16
+  static EXIT_Z = -20
 
     constructor()
     {
@@ -44,20 +41,22 @@ export class PocketDimension
 
         this.physicsBodies = []
         this.lavaMeshes = []
-        this.dragScenes = []
+        this.mixers = []
         this.ashField = null
         this.dragon = null
         this.temple = null
+        this.entryGate = null
+        this.exitGate = null
         this._savedFloorVisible = true
         this._savedWaterVisible = true
 
         this.buildArena()
         this.buildPathNetwork()
+        this.buildGateways()
         this.buildTempleCourt()
         this.buildLavaDecor()
-        this.buildPathLife()
+        this.buildGltfDenizens()
         this.buildDragon()
-        this.buildExitGate()
         this.buildPhysicsShell()
         this.setInteract()
 
@@ -81,15 +80,11 @@ export class PocketDimension
         }
     }
 
-    /** Add raised stone path + Rapier collider. */
     addPath(x, z, length, width, yaw = 0)
     {
-        const path = yaw === 0
-            ? makeStonePath(x, z, length, width, yaw)
-            : makeStoneBridge(x, z, length, width, yaw)
+        const path = makeStonePath(x, z, length, width, yaw)
         this.group.add(path)
-
-        const h = path.userData.pathCollider?.deckH ?? 0.38
+        const h = path.userData.pathCollider?.deckH ?? 0.55
         const cos = Math.abs(Math.cos(yaw))
         const sin = Math.abs(Math.sin(yaw))
         const hx = (length * cos + width * sin) * 0.5
@@ -102,14 +97,27 @@ export class PocketDimension
     {
         const R = PocketDimension.HALF + 12
 
-        // Lava sea (orange/yellow — not flat red)
-        const lava = makeLavaBed(48, 48)
-        lava.position.y = 0
+        // Lava sea — sits BELOW roads so orange glow is visible in gaps
+        const lava = makeLavaBed(50, 50)
+        lava.position.y = -0.05
         this.group.add(lava)
         if(lava.userData.lavaPulse)
             this.lavaMeshes.push(...lava.userData.lavaPulse)
 
-        // Volcanic rim wall
+        // Lava channels visible beside main spine
+        for(const [x, z, w, d] of [
+            [-6, 2, 3, 28], [6, 2, 3, 28], [-14, -8, 8, 4], [14, 2, 6, 4],
+        ])
+        {
+            const channel = new THREE.Mesh(
+                new THREE.BoxGeometry(w, 0.08, d),
+                hellMat(HELL.lavaMid, { glow: true, fog: false })
+            )
+            channel.position.set(x, -0.12, z)
+            this.group.add(channel)
+            this.lavaMeshes.push({ mesh: channel, phase: x + z })
+        }
+
         const wall = new THREE.Mesh(
             new THREE.CylinderGeometry(R, R * 1.03, 16, 28, 1, true),
             hellMat(HELL.stoneEdge)
@@ -117,16 +125,15 @@ export class PocketDimension
         wall.position.y = 6
         this.group.add(wall)
 
-        const rimGlow = new THREE.Mesh(
-            new THREE.TorusGeometry(R * 0.99, 0.25, 6, 36),
+        const rim = new THREE.Mesh(
+            new THREE.TorusGeometry(R * 0.99, 0.3, 6, 36),
             hellMat(HELL.lavaDark, { glow: true, fog: false })
         )
-        rimGlow.rotation.x = Math.PI / 2
-        rimGlow.position.y = 0.05
-        this.group.add(rimGlow)
-        this.lavaMeshes.push({ mesh: rimGlow, phase: 0.5 })
+        rim.rotation.x = Math.PI / 2
+        rim.position.y = -0.02
+        this.group.add(rim)
+        this.lavaMeshes.push({ mesh: rim, phase: 0.3 })
 
-        // Smoky dome ceiling
         const ceil = new THREE.Mesh(
             new THREE.SphereGeometry(R * 0.96, 22, 10, 0, Math.PI * 2, 0, Math.PI * 0.45),
             hellMat('#1a1520')
@@ -135,56 +142,91 @@ export class PocketDimension
         ceil.rotation.x = Math.PI
         this.group.add(ceil)
 
-        this.ashField = makeAshField(90, 22, 14)
+        this.ashField = makeAshField(70, 22, 12)
         this.group.add(this.ashField)
     }
 
     /**
-     * Path network (reference layout):
-     *   [Temple NW] ←bridge← junction ← spine → [Spawn S] → [Exit gate]
-     *                      ↓
-     *                 east bridge → overlook
+     * Road layout (top-down):
+     *   N [EXIT GATE] ← spine ← [ENTRY GATE] S
+     *         ↖ west bridge → temple
      */
     buildPathNetwork()
     {
-        // South spawn landing
-        this.addPath(0, 15, 6, 5.5, 0)
+        // Entry landing (south — where you arrive from main world)
+        this.addPath(0, PocketDimension.ENTRY_Z, 7, 6, 0)
 
-        // Main spine (drive north toward temple)
-        this.addPath(0, -1, 4.2, 30, Math.PI / 2)
+        // Main spine north
+        this.addPath(0, -1, 4.5, 32, Math.PI / 2)
 
-        // Junction plaza
-        this.addPath(0, -2, 7, 7, 0)
+        // Junction
+        this.addPath(0, -2, 8, 8, 0)
 
-        // West bridge → temple island
-        this.addPath(-7.5, -6, 11, 3.4, 0)
-        this.addPath(-14, -11, 8, 7, 0)
+        // West bridge → temple platform
+        this.addPath(-7.5, -6, 11, 3.6, 0)
+        this.addPath(-14, -11, 8.5, 7.5, 0)
 
-        // Temple approach stairs
-        const stairs = makeStoneStairs(-10.5, -7.5, 4, 3.4, 0, 0.32)
+        const stairs = makeStoneStairs(-10.5, -7.5, 4, 3.6, 0, 0.36)
         this.group.add(stairs)
-        this.addFixedBody(this.w(-10.5, 0.64, -9.1), [ 1.7, 0.64, 1.8 ])
+        this.addFixedBody(this.w(-10.5, 0.72, -9.1), [ 1.8, 0.72, 1.8 ])
 
-        // East bridge + overlook platform
-        this.addPath(7.5, 1, 10, 3.2, 0)
+        // East branch
+        this.addPath(7.5, 1, 10, 3.4, 0)
         this.addPath(14, 1, 6, 5.5, Math.PI / 2)
 
-        // Heat cracks on spine (glow under tiles)
+        // Exit platform (north — far from entry)
+        this.addPath(0, PocketDimension.EXIT_Z, 7, 6, 0)
+
+        // Heat cracks on spine
         for(const [x, z, yaw] of [
-            [0, 10, 0], [0, 4, Math.PI / 2], [0, -6, Math.PI / 2], [-5, -6, 0.3], [6, 1, -0.2],
+            [0, 10, Math.PI / 2], [0, 2, Math.PI / 2], [0, -8, Math.PI / 2], [-5, -6, 0.2],
         ])
         {
-            const crack = makeHeatCrack(x, z, 1.4, yaw)
+            const crack = makeHeatCrack(x, z, 1.6, yaw)
             this.group.add(crack)
             if(crack.userData.lavaPulse)
                 this.lavaMeshes.push(crack.userData.lavaPulse)
         }
+
+        // Path marker posts (readable like main-world lanterns)
+        for(const [x, z] of [
+            [3.2, 12], [-3.2, 6], [3.2, -2], [-3.2, -10], [3.2, -16],
+        ])
+        {
+            const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.6, 6), hellMat(HELL.iron))
+            post.position.set(x, 1.3, z)
+            const lamp = new THREE.Mesh(
+                new THREE.SphereGeometry(0.22, 8, 6),
+                hellMat(HELL.lavaBright, { glow: true, fog: false })
+            )
+            lamp.position.set(x, 2.65, z)
+            this.group.add(post, lamp)
+        }
+    }
+
+    buildGateways()
+    {
+        // SOUTH — entry from main world (visual only, no exit here)
+        this.entryGate = makeInfernoGateway({ name: 'infernoEntry', label: 'Inferno' })
+        this.entryGate.position.set(0, 0, PocketDimension.ENTRY_Z + 2)
+        this.group.add(this.entryGate)
+        this.addFixedBody(this.w(0, 0.3, PocketDimension.ENTRY_Z + 2), [ 3.5, 0.3, 2.5 ])
+
+        // NORTH — exit back to main world (interact only)
+        this.exitGate = makeInfernoGateway({ name: 'infernoExit', label: 'Escape' })
+        this.exitGate.position.set(0, 0, PocketDimension.EXIT_Z)
+        this.group.add(this.exitGate)
+        this.exitPortalMesh = this.exitGate.userData.gateway?.portal
+        this.exitInner = this.exitGate.userData.gateway?.portalInner
+        this.addFixedBody(this.w(0, 0.3, PocketDimension.EXIT_Z), [ 3.5, 0.3, 2.5 ])
+        this.addFixedBody(this.w(-2.8, 3, PocketDimension.EXIT_Z), [ 0.45, 3, 0.45 ])
+        this.addFixedBody(this.w(2.8, 3, PocketDimension.EXIT_Z), [ 0.45, 3, 0.45 ])
     }
 
     buildTempleCourt()
     {
         this.temple = makeVolcanoTemple()
-        this.temple.position.set(-14, 0.38, -13)
+        this.temple.position.set(-14, 0.55, -13)
         this.temple.rotation.y = Math.PI * 0.08
         this.group.add(this.temple)
         this.addFixedBody(this.w(-14, 4, -13), [ 4.5, 4, 3.5 ])
@@ -192,53 +234,57 @@ export class PocketDimension
 
     buildLavaDecor()
     {
-        // Basalt + shrooms only IN lava (off the roads)
-        const basaltSpots = [
-            [-11, 9], [11, 8], [-13, 3], [12, -7], [-9, -15], [10, -13], [-17, -2], [17, -3], [-8, 14], [9, 15],
-        ]
-        for(const [x, z] of basaltSpots)
+        for(const [x, z] of [
+            [-11, 9], [11, 8], [-13, 3], [12, -7], [-9, -15], [10, -13], [-17, -2], [17, -3],
+        ])
             this.group.add(makeBasaltCluster(x, z, 4 + (Math.abs(x) % 3)))
 
-        const shrooms = [ [-10, 7 ], [13, 5 ], [-15, -6 ], [11, -11 ] ]
-        for(const [x, z] of shrooms)
+        for(const [x, z] of [ [-10, 7 ], [13, 5 ], [-15, -6 ] ])
             this.group.add(makePurpleShroom(x, z))
+
+        for(const [x, z, s] of [
+            [-3, 11, 0.9], [3, 8, 1], [-3.2, 0, 0.85], [3, -6, 1], [-16, -10, 1.1], [15, 2, 0.95],
+        ])
+            this.group.add(makeScorchedTree(x, z, s))
     }
 
-    buildPathLife()
+    buildGltfDenizens()
     {
-        // Trees along path edges only
-        const trees = [
-            [-2.6, 11, 0.9], [2.6, 10, 1], [-2.8, 3, 0.85], [2.8, -4, 1.05],
-            [-3.2, -9, 0.95], [3, -11, 0.8], [-16, -10, 1.1], [-12, -15, 0.9], [15, 2, 1],
-        ]
-        for(const [x, z, s] of trees)
-            this.group.add(makeScorchedTree(x, z, s))
+        const guard = this.game.resources?.hellMinionGuard
+        const king = this.game.resources?.hellMinionKing
+        const flyer = this.game.resources?.hellMinionFlyer
 
-        // Imps guarding the roads (reference red minions)
-        const imps = [
-            { x: 0, z: 12, yaw: Math.PI },
-            { x: -2.5, z: -1, yaw: 0.8 },
-            { x: 2.5, z: -3, yaw: -0.6 },
-            { x: -12, z: -9, yaw: 0.2 },
-            { x: 13, z: 2, yaw: -1.4 },
-        ]
-        for(const imp of imps)
+        if(guard)
         {
-            const m = makeImp({ scale: 1, yaw: imp.yaw })
-            m.position.set(imp.x, 0.38, imp.z)
-            this.group.add(m)
+            const spots = [
+                { x: 2, z: 10, yaw: -2.2, s: 0.55 },
+                { x: -2, z: 4, yaw: 0.6, s: 0.5 },
+                { x: 12, z: 2, yaw: -1.4, s: 0.52 },
+                { x: -11, z: -8, yaw: 0.3, s: 0.5 },
+            ]
+            for(const p of spots)
+            {
+                const placed = placeHellMinion(guard, { x: p.x, z: p.z, yaw: p.yaw, scale: p.s, y: 0.55 })
+                this.group.add(placed.group)
+                if(placed.mixer)
+                    this.mixers.push(placed.mixer)
+            }
         }
 
-        // Two drag scenes on side platforms only
-        for(const p of [
-            { x: 14, z: 3, yaw: -1.2 },
-            { x: -11, z: -5, yaw: 0.5 },
-        ])
+        if(king)
         {
-            const scene = makeDragScene(p.x, p.z, p.yaw)
-            this.group.add(scene)
-            if(scene.userData.drag)
-                this.dragScenes.push(scene.userData.drag)
+            const placed = placeHellMinion(king, { x: -14, z: -11, yaw: Math.PI * 0.1, scale: 1.1, y: 0.55 })
+            this.group.add(placed.group)
+            if(placed.mixer)
+                this.mixers.push(placed.mixer)
+        }
+
+        if(flyer)
+        {
+            const placed = placeHellMinion(flyer, { x: 5, z: -12, yaw: -0.8, scale: 0.65, y: 0.55 })
+            this.group.add(placed.group)
+            if(placed.mixer)
+                this.mixers.push(placed.mixer)
         }
     }
 
@@ -248,24 +294,16 @@ export class PocketDimension
         this.group.add(this.dragon)
     }
 
-    buildExitGate()
-    {
-        const gate = makeHellGate()
-        gate.position.set(0, 0, 20)
-        this.group.add(gate)
-        this.exitPortalMesh = gate.userData.exitPortal?.outer
-        this.exitInner = gate.userData.exitPortal?.inner
-        this.addFixedBody(this.w(0, 0.2, 20), [ 3, 0.2, 2.5 ])
-        this.addFixedBody(this.w(-2.2, 2.6, 20), [ 0.45, 2.25, 0.45 ])
-        this.addFixedBody(this.w(2.2, 2.6, 20), [ 0.45, 2.25, 0.45 ])
-    }
-
     buildPhysicsShell()
     {
         const H = PocketDimension.HALF
         const ox = PocketDimension.ORIGIN.x
         const oy = PocketDimension.ORIGIN.y
         const oz = PocketDimension.ORIGIN.z
+
+        // FULL arena floor — car never falls through to main world
+        this.addFixedBody({ x: ox, y: oy + 0.28, z: oz }, [ H + 1, 0.28, H + 1 ], 'floor')
+
         const wallH = 7
         const walls = [
             { x: ox, y: oy + wallH * 0.5, z: oz + H + 0.5, p: [ H + 2, wallH * 0.5, 0.5 ] },
@@ -281,8 +319,8 @@ export class PocketDimension
     {
         const object = this.game.objects.add(null, {
             type: 'fixed',
-            friction: 0.5,
-            restitution: 0.05,
+            friction: 0.55,
+            restitution: 0.02,
             position,
             enabled: false,
             colliders: [
@@ -300,10 +338,10 @@ export class PocketDimension
 
     setInteract()
     {
-        const worldExit = this.w(0, 3.5, 20)
+        const worldExit = this.w(0, 3.8, PocketDimension.EXIT_Z)
         this.exitPoint = this.game.interactivePoints.create(
             new THREE.Vector3(worldExit.x, worldExit.y, worldExit.z),
-            'Escape',
+            'Escape Inferno',
             InteractivePoints.ALIGN_LEFT,
             InteractivePoints.STATE_HIDDEN,
             () => this.onExitRequest?.(),
@@ -383,16 +421,16 @@ export class PocketDimension
         return {
             position: new THREE.Vector3(
                 PocketDimension.ORIGIN.x,
-                PocketDimension.ORIGIN.y + 1.2,
-                PocketDimension.ORIGIN.z + 14
+                PocketDimension.ORIGIN.y + 1.4,
+                PocketDimension.ORIGIN.z + PocketDimension.ENTRY_Z
             ),
             rotation: Math.PI,
         }
     }
 
-    isNearExit(playerPos, radius = 3.8)
+    isNearExit(playerPos, radius = 4)
     {
-        const exit = this.w(0, 1.5, 20)
+        const exit = this.w(0, 1.5, PocketDimension.EXIT_Z)
         return playerPos.distanceTo(new THREE.Vector3(exit.x, exit.y, exit.z)) < radius
     }
 
@@ -408,7 +446,6 @@ export class PocketDimension
             if(y > height)
                 y = Math.random() * 2
             pos.setY(i, y)
-            pos.setX(i, pos.getX(i) + Math.sin(elapsed * 0.4 + i) * 0.006)
         }
         pos.needsUpdate = true
     }
@@ -443,6 +480,8 @@ export class PocketDimension
         if(!this.active)
             return
 
+        const dt = this.game.ticker?.deltaScaled ?? 0.016
+
         const floor = this.game.world?.floor
         if(floor?.mesh)
             floor.mesh.visible = false
@@ -463,18 +502,15 @@ export class PocketDimension
         {
             if(!l.mesh)
                 continue
-            const pulse = 0.9 + Math.sin(elapsed * 1.8 + (l.phase ?? 0)) * 0.1
+            const pulse = 0.92 + Math.sin(elapsed * 1.8 + (l.phase ?? 0)) * 0.08
             l.mesh.scale.set(pulse, 1, pulse)
         }
 
         if(this.temple?.userData?.sigil)
             this.temple.userData.sigil.rotation.z = elapsed * 0.4
 
-        for(const d of this.dragScenes)
-        {
-            d.imp.position.x = Math.sin(elapsed * 0.35 + d.phase) * 0.12
-            d.victim.position.z = 0.5 + Math.sin(elapsed * 0.35 + d.phase) * 0.2
-        }
+        for(const mixer of this.mixers)
+            mixer.update(dt)
 
         this._tickAsh(elapsed)
         this._tickDragon(elapsed)
@@ -483,5 +519,7 @@ export class PocketDimension
             this.exitPortalMesh.rotation.z = -elapsed * 1.2
         if(this.exitInner)
             this.exitInner.rotation.z = elapsed * 1.8
+        if(this.entryGate?.userData?.gateway?.portal)
+            this.entryGate.userData.gateway.portal.rotation.z = elapsed * 0.6
     }
 }
