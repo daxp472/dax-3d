@@ -201,7 +201,7 @@ export class Foliage
         this.game.scene.add(this.mesh)
 
         this.instanceMatrix = new THREE.InstancedBufferAttribute(new Float32Array(this.mesh.count * 16), 16)
-        this.instanceMatrix.setUsage(THREE.StaticDrawUsage)
+        this.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
 
         let i = 0
         for(const matrix of this.transformMatrices)
@@ -209,6 +209,46 @@ export class Foliage
             matrix.toArray(this.instanceMatrix.array, i * 16)
             i++
         }
+
+        this.instanceMatrix.needsUpdate = true
+    }
+
+    /**
+     * Zero-scale foliage instances near a world XZ point.
+     * Must write this.instanceMatrix (custom attr) — mesh.instanceMatrix is unused.
+     */
+    hideNear(center, radius = 8)
+    {
+        if(!this.instanceMatrix || !this.transformMatrices?.length)
+            return
+
+        const r2 = radius * radius
+        const cx = center.x
+        const cz = typeof center.z !== 'undefined' ? center.z : center.y
+        const dummy = new THREE.Object3D()
+        let changed = false
+
+        for(let i = 0; i < this.transformMatrices.length; i++)
+        {
+            const m = this.transformMatrices[i]
+            const x = m.elements[12]
+            const z = m.elements[14]
+            const dx = x - cx
+            const dz = z - cz
+            if(dx * dx + dz * dz > r2)
+                continue
+
+            dummy.position.set(x, -999, z)
+            dummy.scale.set(0, 0, 0)
+            dummy.quaternion.identity()
+            dummy.updateMatrix()
+            dummy.matrix.toArray(this.instanceMatrix.array, i * 16)
+            this.transformMatrices[i] = dummy.matrix.clone()
+            changed = true
+        }
+
+        if(changed)
+            this.instanceMatrix.needsUpdate = true
     }
 
     update()
