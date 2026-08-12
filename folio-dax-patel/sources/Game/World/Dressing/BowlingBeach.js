@@ -1,15 +1,18 @@
 import * as THREE from 'three/webgpu'
 import { Game } from '../../Game.js'
 import { InteractivePoints } from '../../InteractivePoints.js'
-import { vibeMat, VoxelPatron } from './VoxelPatron.js'
+import { vibeMat } from './VoxelPatron.js'
 
 /**
- * Beach club at player-recorded shore point (−27.4, 74.3).
- * Local offsets cluster around ORIGIN (world XZ).
+ * Beach club at (−27.4, 74.3).
+ * CENTER stays clear sand (map TP + drive lane). Props sit on a ring.
+ * Rule: solid props get Rapier fixed colliders; flush decals do not.
  */
 export class BowlingBeach
 {
     static ORIGIN = { x: -27.398, z: 74.268 }
+    /** Clear sand pad for map teleport — south of lounge gear (land side). */
+    static SPAWN = { x: -27.4, z: 70.6, rotation: 0 }
 
     constructor()
     {
@@ -19,29 +22,42 @@ export class BowlingBeach
         this.game.scene.add(this.group)
 
         this.floaters = []
-        this.patrons = []
         const O = BowlingBeach.ORIGIN
 
-        this.buildSandPad(O.x, O.z)
-        // Cluster around recorded drive point
-        this.buildUmbrella({ x: O.x - 2.4, z: O.z + 1.1, yaw: 0.35, canopy: '#ff6b35', pole: '#f4f0e6' })
-        this.buildUmbrella({ x: O.x + 2.1, z: O.z + 0.4, yaw: -0.55, canopy: '#7b5cff', pole: '#f4f0e6' })
-        this.buildLounger({ x: O.x - 1.2, z: O.z + 1.8, yaw: 0.4 })
-        this.buildLounger({ x: O.x + 1.0, z: O.z + 1.5, yaw: -0.5 })
-        this.addLoungerPatron({ x: O.x - 1.2, z: O.z + 1.8, yaw: 0.4, outfit: 'rose', phase: 0.8 })
-        this.addLoungerPatron({ x: O.x + 1.0, z: O.z + 1.5, yaw: -0.5, outfit: 'indigo', phase: 1.6, drink: 'coffee' })
-        this.buildChaiCooler({ x: O.x, z: O.z + 0.9 })
-        this.buildTowel({ x: O.x - 3.2, z: O.z + 2.0, yaw: 0.25 })
-        this.buildSurfboard({ x: O.x + 3.4, z: O.z + 0.6, yaw: 1.05 })
-        this.buildSandcastle({ x: O.x - 0.4, z: O.z - 1.4 })
-        this.buildBeachBall({ x: O.x + 0.8, z: O.z + 2.4 })
-        this.buildFlipFlops({ x: O.x - 1.8, z: O.z + 2.2 })
-        this.buildPalmStub({ x: O.x + 4.6, z: O.z - 0.2 })
-        this.buildPalmStub({ x: O.x - 4.2, z: O.z + 1.4 })
-        this.buildDriftWood({ x: O.x + 1.6, z: O.z - 2.0 })
-        this.setSign(O.x + 3.0, O.z + 1.6)
-        this.setInteract(O.x, O.z + 0.9)
-        this.clearNearbyFoliage(O.x, O.z, 10)
+        // —— West lounge (off-center) ——
+        this.buildUmbrella({ x: O.x - 4.2, z: O.z + 1.6, yaw: 0.35, canopy: '#ff6b35', pole: '#f4f0e6' })
+        this.buildLounger({ x: O.x - 4.0, z: O.z + 2.5, yaw: 0.35 })
+        this.buildTowelDecal({ x: O.x - 5.4, z: O.z + 2.2, yaw: 0.25 })
+        this.buildFlipFlops({ x: O.x - 3.4, z: O.z + 2.8 })
+
+        // —— East lounge (off-center) ——
+        this.buildUmbrella({ x: O.x + 4.4, z: O.z + 1.2, yaw: -0.55, canopy: '#7b5cff', pole: '#f4f0e6' })
+        this.buildLounger({ x: O.x + 4.2, z: O.z + 2.2, yaw: -0.5 })
+        this.buildBeachBall({ x: O.x + 5.2, z: O.z + 2.6 })
+        this.buildSurfboard({ x: O.x + 5.8, z: O.z + 0.4, yaw: 1.05 })
+
+        // —— Service / edge props (never on SPAWN) ——
+        this.buildChaiCooler({ x: O.x + 5.5, z: O.z - 1.2 })
+        this.buildSandcastle({ x: O.x - 1.2, z: O.z + 4.0 })
+        this.buildDriftWood({ x: O.x + 1.8, z: O.z + 3.6 })
+        this.buildPalmStub({ x: O.x + 7.2, z: O.z - 2.0 })
+        this.buildPalmStub({ x: O.x - 7.0, z: O.z + 2.4 })
+
+        this.setSign(O.x + 6.0, O.z - 2.4)
+        this.setInteract(O.x + 6.0, O.z - 2.4)
+
+        this.clearBeachCenter(O.x, O.z, 14)
+        this.clearBeachCenter(-30.351, 79.58, 8)
+        this.game.ticker?.wait?.(30, () =>
+        {
+            this.clearBeachCenter(O.x, O.z, 14)
+            this.clearBeachCenter(-30.351, 79.58, 8)
+        })
+        this.game.ticker?.wait?.(120, () =>
+        {
+            this.clearBeachCenter(O.x, O.z, 14)
+            this.clearBeachCenter(-30.351, 79.58, 8)
+        })
 
         this.group.traverse((child) =>
         {
@@ -54,66 +70,32 @@ export class BowlingBeach
         })
     }
 
-    /** Warm sand disc so the club reads as beach, not grass island. */
-    buildSandPad(x, z)
+    addFixedCollider(x, y, z, halfExtents)
     {
-        const wet = new THREE.Mesh(
-            new THREE.CylinderGeometry(9.8, 10.2, 0.06, 40),
-            vibeMat('#d4a574', true)
-        )
-        wet.position.set(x, 0.03, z)
-        const dry = new THREE.Mesh(
-            new THREE.CylinderGeometry(8.2, 8.5, 0.08, 40),
-            vibeMat('#e9c46a', true)
-        )
-        dry.position.set(x, 0.06, z)
-        // Soft shore ripples
-        for(let i = 0; i < 6; i++)
-        {
-            const a = (i / 6) * Math.PI * 2
-            const ripple = new THREE.Mesh(
-                new THREE.TorusGeometry(7.2 + i * 0.35, 0.04, 6, 28),
-                vibeMat(i % 2 ? '#f4e3b0' : '#c9a227', true)
-            )
-            ripple.rotation.x = Math.PI / 2
-            ripple.position.set(x, 0.09, z)
-            ripple.scale.set(1, 1, 0.92 + (i % 3) * 0.03)
-            this.group.add(ripple)
-        }
-        this.group.add(wet, dry)
+        this.game.objects.add(null, {
+            type: 'fixed',
+            friction: 0.5,
+            restitution: 0.05,
+            position: { x, y, z },
+            colliders: [
+                {
+                    shape: 'cuboid',
+                    parameters: halfExtents,
+                    position: { x: 0, y: 0, z: 0 },
+                    category: 'object',
+                },
+            ],
+        })
     }
 
-    /** Hide bush/flower instances planted on the beach pad. */
-    clearNearbyFoliage(cx, cz, radius)
+    clearBeachCenter(cx, cz, radius = 14)
     {
-        const targets = [
-            this.game.world?.bushes?.foliage,
-            this.game.world?.flowers?.foliage,
-        ]
-        const m = new THREE.Matrix4()
-        const p = new THREE.Vector3()
-        const q = new THREE.Quaternion()
-        const s = new THREE.Vector3()
-
-        for(const foliage of targets)
-        {
-            const mesh = foliage?.mesh
-            if(!mesh?.isInstancedMesh)
-                continue
-
-            for(let i = 0; i < mesh.count; i++)
-            {
-                mesh.getMatrixAt(i, m)
-                m.decompose(p, q, s)
-                if(Math.hypot(p.x - cx, p.z - cz) < radius)
-                {
-                    s.set(0, 0, 0)
-                    m.compose(p, q, s)
-                    mesh.setMatrixAt(i, m)
-                }
-            }
-            mesh.instanceMatrix.needsUpdate = true
-        }
+        const center = { x: cx, z: cz }
+        this.game.world?.bushes?.foliage?.hideNear?.(center, radius)
+        this.game.world?.flowers?.hideNear?.(center, radius)
+        this.game.world?.birchTrees?.hideNear?.(center, radius)
+        this.game.world?.oakTrees?.hideNear?.(center, radius)
+        this.game.world?.cherryTrees?.hideNear?.(center, radius)
     }
 
     buildUmbrella({ x, z, yaw, canopy, pole })
@@ -130,6 +112,7 @@ export class BowlingBeach
         ring.position.y = 2.15
         g.add(stick, top, ring)
         this.group.add(g)
+        this.addFixedCollider(x, 1.1, z, [ 0.12, 1.1, 0.12 ])
     }
 
     buildLounger({ x, z, yaw })
@@ -148,21 +131,7 @@ export class BowlingBeach
         back.rotation.x = -0.45
         g.add(base, seat, back)
         this.group.add(g)
-    }
-
-    addLoungerPatron({ x, z, yaw, outfit, phase, drink = 'chai' })
-    {
-        const patron = new VoxelPatron({
-            name: 'beachLounger',
-            position: { x, y: 0.32, z },
-            yaw,
-            outfit,
-            phase,
-            drink,
-            pose: 'lounger',
-        })
-        this.patrons.push(patron)
-        this.group.add(patron.group)
+        this.addFixedCollider(x, 0.35, z, [ 0.55, 0.35, 0.95 ])
     }
 
     buildChaiCooler({ x, z })
@@ -186,18 +155,19 @@ export class BowlingBeach
         }
         g.add(body, lid, label)
         this.group.add(g)
+        this.addFixedCollider(x, 0.35, z, [ 0.48, 0.35, 0.32 ])
     }
 
-    buildTowel({ x, z, yaw })
+    buildTowelDecal({ x, z, yaw })
     {
         const g = new THREE.Group()
-        g.position.set(x, 0.02, z)
+        g.position.set(x, 0.002, z)
         g.rotation.y = yaw
-        const towel = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.03, 1.6), vibeMat('#5b4dff', true))
+        const towel = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.004, 1.6), vibeMat('#5b4dff', true))
         for(let i = 0; i < 3; i++)
         {
             const stripe = new THREE.Mesh(
-                new THREE.BoxGeometry(0.9, 0.035, 0.12),
+                new THREE.BoxGeometry(0.9, 0.005, 0.12),
                 vibeMat(i % 2 ? '#ff6b35' : '#ffffff', true)
             )
             stripe.position.z = -0.5 + i * 0.35
@@ -210,15 +180,15 @@ export class BowlingBeach
     buildSurfboard({ x, z, yaw })
     {
         const g = new THREE.Group()
-        g.position.set(x, 0.05, z)
+        g.position.set(x, 0, z)
         g.rotation.y = yaw
-        g.rotation.z = 0.15
-        const board = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.08, 2.2), vibeMat('#9b5de5', true))
+        const board = new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.8, 0.08), vibeMat('#9b5de5', true))
         board.position.y = 0.9
-        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.09, 2.0), vibeMat('#00f5d4', true))
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.6, 0.09), vibeMat('#00f5d4', true))
         stripe.position.y = 0.9
         g.add(board, stripe)
         this.group.add(g)
+        this.addFixedCollider(x, 0.9, z, [ 0.3, 0.9, 0.2 ])
     }
 
     buildSandcastle({ x, z })
@@ -238,6 +208,7 @@ export class BowlingBeach
         flag.position.set(0.12, 1.18, 0)
         g.add(base, keep, tower, pole, flag)
         this.group.add(g)
+        this.addFixedCollider(x, 0.4, z, [ 0.55, 0.4, 0.55 ])
     }
 
     buildBeachBall({ x, z })
@@ -246,14 +217,15 @@ export class BowlingBeach
         ball.position.set(x, 0.28, z)
         this.group.add(ball)
         this.floaters.push({ mesh: ball, baseY: 0.28, phase: Math.random() * 6, amp: 0.06, spin: 0.4 })
+        this.addFixedCollider(x, 0.28, z, [ 0.28, 0.28, 0.28 ])
     }
 
     buildFlipFlops({ x, z })
     {
         const g = new THREE.Group()
-        g.position.set(x, 0.03, z)
+        g.position.set(x, 0.002, z)
         const mat = vibeMat('#00bbf9', true)
-        const a = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.5), mat)
+        const a = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.004, 0.5), mat)
         a.rotation.y = 0.2
         const b = a.clone()
         b.position.x = 0.28
@@ -279,6 +251,7 @@ export class BowlingBeach
             g.add(leaf)
         }
         this.group.add(g)
+        this.addFixedCollider(x, 1.0, z, [ 0.35, 1.0, 0.35 ])
     }
 
     buildDriftWood({ x, z })
@@ -287,6 +260,7 @@ export class BowlingBeach
         log.rotation.z = Math.PI / 2
         log.position.set(x, 0.12, z)
         this.group.add(log)
+        this.addFixedCollider(x, 0.15, z, [ 0.7, 0.15, 0.2 ])
     }
 
     setSign(x, z)
@@ -302,6 +276,7 @@ export class BowlingBeach
         g.add(post, board, edge)
         this.group.add(g)
         this.sign = g
+        this.addFixedCollider(x, 0.9, z, [ 0.75, 0.9, 0.2 ])
     }
 
     setInteract(x, z)
@@ -314,7 +289,7 @@ export class BowlingBeach
             () =>
             {
                 this.game.notifications.show(
-                    `<div class="top"><div class="title">Seafront Club</div></div><div class="bottom"><div class="description">Chai on the shore. Water's right there — don't drive in… unless you mean to.</div></div>`,
+                    `<div class="top"><div class="title">Seafront Club</div></div><div class="bottom"><div class="description">Clear sand mid-pad — lounge gear on the edges. Don't park in the chai cooler.</div></div>`,
                     'bowling-beach',
                     2.8,
                     null,
@@ -337,8 +312,5 @@ export class BowlingBeach
         }
         if(this.sign)
             this.sign.rotation.y = Math.sin(elapsed * 0.5) * 0.05
-        const playerPos = this.game.player?.position ?? null
-        for(const p of this.patrons)
-            p.update(elapsed, playerPos)
     }
 }
